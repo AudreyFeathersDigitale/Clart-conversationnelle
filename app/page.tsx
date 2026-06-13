@@ -12,14 +12,14 @@ const googleSheetDemoUrl = "https://script.google.com/macros/s/AKfycbwy_lJ3__qWO
 
 const introMessages = [
   "👋 Hello, moi c’est Clarté 🤍",
-  "On va prendre quelques minutes pour regarder ce qui se passe aujourd’hui entre tes prospects, ton acquisition et ton offre.",
-  "Pas de grand audit compliqué ici. Juste une discussion pour mieux comprendre ce qui bloque peut-être… et te montrer comment un lead magnet peut faire plus qu’un simple freebie.",
+  "On va prendre quelques minutes pour regarder comment les bonnes personnes te découvrent, ce qui les aide à avancer, et ce qui repose encore trop sur toi aujourd’hui.",
+  "Pas de grand audit compliqué ici. Juste une discussion pour faire ressortir les points de friction, les opportunités de fluidité, et la place possible d’une IA supervisée dans ton parcours prospect.",
 ];
 
 const introCards = [
   "🧭 3 à 5 minutes maximum",
   "💬 Une discussion, pas un formulaire",
-  "✨ Un exemple concret à la fin",
+  "✨ Une synthèse personnalisée à la fin",
 ];
 
 type Tag =
@@ -62,110 +62,144 @@ type ChatMessage = {
 
 const steps: Step[] = [
   {
-    id: "main_gap",
-    question:
-      "Quand tu regardes ton activité aujourd’hui, qu’est-ce qui te parle le plus ?",
-    type: "choice",
-    multiple: true,
-    maxSelections: 3,
-    helperText: "Tu peux choisir jusqu’à 3 réponses.",
-    options: [
-      "Attirer plus de prospects",
-      "Attirer les bonnes personnes",
-      "Convertir les prospects intéressés",
-      "Garder le lien après un premier intérêt",
-      "Tout repose encore beaucoup sur moi",
-    ],
-  },
-  {
     id: "business_context",
-    question:
-      "Pour que je comprenne mieux : tu fais quoi exactement, et tu accompagnes qui ?",
+    question: "Tu fais quoi exactement aujourd’hui, et pour qui ?",
     type: "text",
     placeholder:
-      "Ex : je suis coach business, j’aide les indépendants à structurer leur offre…",
+      "Ex : j’accompagne les indépendants à mieux vendre leur offre, je suis coach, consultante, thérapeute, formatrice…",
   },
   {
-    id: "current_acquisition",
-    question: "Aujourd’hui, les personnes qui viennent vers toi te découvrent surtout comment ?",
+    id: "discovery_channels",
+    question:
+      "Aujourd’hui, les bonnes personnes te découvrent surtout comment ?",
     type: "choice",
     multiple: true,
+    maxSelections: 4,
+    helperText: "Tu peux sélectionner plusieurs réponses.",
     options: [
       "Instagram",
       "LinkedIn",
-      "TikTok",
-      "Facebook",
       "Bouche-à-oreille",
       "SEO / Google",
       "Publicité",
+      "Contenu",
       "Email / prospection",
       "Autre",
     ],
   },
   {
-    id: "friction_detail",
+    id: "engagement_channels",
     question:
-      "Et dans ce parcours-là, qu’est-ce qui te frustre le plus aujourd’hui ?",
-    type: "text",
-    placeholder:
-    "Ex : les gens aiment mon contenu mais ne passent pas à l’action, je relance peu, je perds le lien, je manque de temps, la prospection ou la qualification des prospects...",
-  },
-  {
-    id: "relay_system",
-    question:
-      "Quand quelqu’un montre de l’intérêt pour ce que tu fais, tu as déjà quelque chose qui prend le relais derrière ?",
+      "Et comment gardes-tu le lien avec les personnes qui montrent de l’intérêt pour ce que tu proposes ?",
     type: "choice",
     multiple: true,
+    maxSelections: 4,
+    helperText: "Choisis ce qui ressemble le plus à ton fonctionnement actuel.",
     options: [
-      "Un lead magnet",
-      "Une newsletter",
-      "Une séquence email",
-      "Un appel découverte",
-      "Des messages privés",
-      "Rien de structuré pour l’instant",
-      "Je ne sais pas trop",
+      "Newsletter",
+      "Emails",
+      "Live",
+      "Challenge",
+      "Lead magnet",
+      "Expérience interactive",
+      "DM / messages privés",
+      "Appel",
+      "Communauté",
+      "Rien de structuré",
+      "Autre",
     ],
   },
   {
-  id: "lead_magnet_awareness",
-  question:
-    "Quand tu entends “lead magnet”, qu’est-ce qui te vient le plus en tête ?",
-  type: "choice",
-  multiple: true,
-  maxSelections: 3,
-  helperText: "Tu peux choisir plusieurs réponses.",
-  options: [
-    "Un PDF gratuit ou une checklist",
-    "Un quiz ou un diagnostic",
-    "Une expérience interactive",
-    "Un moyen de récupérer des emails",
-    "Un moyen d’engager ou qualifier les prospects",
-    "Je ne connais pas vraiment",
-  ],
-},
-  {
-    id: "projection",
+    id: "human_load",
     question:
-      "Si un système pouvait mieux comprendre tes prospects, les aider à clarifier leur besoin et te transmettre des réponses utiles… ça t’aiderait surtout à quoi ?",
+      "Dans tout le parcours prospect, qu’est-ce qui repose encore beaucoup sur toi aujourd’hui ?",
     type: "choice",
     multiple: true,
+    maxSelections: 4,
+    helperText: "Tu peux choisir les points les plus présents.",
+    options: [
+      "Répondre aux questions",
+      "Expliquer mon offre",
+      "Relancer les personnes intéressées",
+      "Qualifier les prospects",
+      "Créer du contenu régulièrement",
+      "Prospecter manuellement",
+      "Rassurer avant l’achat",
+      "Organiser les appels",
+      "Tout gérer au feeling",
+    ],
+  },
+  {
+    id: "three_month_risk",
+    question:
+      "À ce rythme-là, qu’est-ce qui pourrait devenir difficile à tenir dans les prochains mois ?",
+    type: "text",
+    placeholder:
+      "Ex : continuer à relancer, garder un flux régulier, répondre à tout le monde, créer du contenu, ne pas perdre les personnes intéressées…",
+  },
+  {
+    id: "positive_projection",
+    question:
+      "Et si une partie de tout ça devenait plus fluide demain… qu’est-ce qui changerait le plus pour toi ?",
+    type: "choice",
+    multiple: true,
+    maxSelections: 4,
+    helperText: "L’idée est de voir ce qui créerait le plus de soulagement.",
     options: [
       "Gagner du temps",
-      "Mieux qualifier les prospects",
-      "Créer plus de confiance avant un échange",
-      "Éduquer les prospects avant mon offre",
-      "Relancer moins manuellement",
-      "Augmenter les demandes entrantes",
-      "Je ne suis pas sûr(e)",
+      "Avoir des prospects mieux préparés",
+      "Ne plus devoir tout relancer moi-même",
+      "Créer plus de confiance avant l’échange",
+      "Avoir une acquisition plus régulière",
+      "Mieux comprendre les besoins des prospects",
+      "Me concentrer sur les appels et la relation",
+      "Réduire ma charge mentale",
+    ],
+  },
+  {
+    id: "ai_skepticism",
+    question:
+      "Quand tu entends parler d’IA dans la relation client, qu’est-ce qui te rend le plus sceptique ou prudent aujourd’hui ?",
+    type: "choice",
+    multiple: true,
+    maxSelections: 3,
+    helperText: "C’est important de garder ce point en tête.",
+    options: [
+      "Que ça fasse faux ou robotique",
+      "Perdre le côté humain",
+      "Des réponses trop impersonnelles",
+      "Des automatisations agressives",
+      "Manquer de contrôle sur ce qui est dit",
+      "Ne pas savoir comment l’utiliser correctement",
+      "Je n’ai pas vraiment de doute",
+    ],
+  },
+  {
+    id: "human_boundary",
+    question:
+      "Et dans toute cette relation, qu’est-ce qui doit absolument rester humain selon toi ?",
+    type: "choice",
+    multiple: true,
+    maxSelections: 4,
+    helperText: "Ce sont les parties que l’IA ne devrait pas remplacer.",
+    options: [
+      "Les appels",
+      "L’écoute émotionnelle",
+      "Le closing",
+      "La stratégie",
+      "La relation de confiance",
+      "Les décisions importantes",
+      "L’accompagnement client",
+      "La négociation",
     ],
   },
 ];
 
 const insightMessages = [
-  "Tu vois ce qui vient de se passer ? 🙂",
-  "En quelques réponses, on comprend déjà mieux ce qui se joue : tes canaux, tes blocages, ton niveau de suivi, et ce que tes prospects auraient besoin de clarifier.",
-  "C’est exactement là qu’un lead magnet conversationnel devient intéressant : il ne récupère pas juste un contact, il prépare déjà la suite.",
-  "Je peux maintenant te montrer un exemple concret : ce que vit le prospect, puis ce que tu récupères côté entreprise.",
+  "Merci. J’ai maintenant une vision beaucoup plus claire de ce qui fonctionne déjà… et de ce qui repose encore beaucoup sur toi aujourd’hui.",
+  "Ce que tu viens de décrire montre surtout le chemin entre la visibilité, l’intérêt, la confiance et le passage à l’action.",
+  "C’est souvent dans cet espace que des prospects se perdent : pas parce qu’ils ne sont pas intéressés, mais parce qu’il manque parfois un relais clair, humain et régulier.",
+  "Je peux te préparer une synthèse personnalisée avec les points de friction, les opportunités de fluidification, ce qui pourrait être soutenu par une IA et ce qui devrait rester humain.",
 ];
 
 function normalizeText(value: string) {
@@ -180,73 +214,89 @@ function detectTags(stepId: string, value: string | string[]): Tag[] {
   const tags = new Set<Tag>();
 
   if (
-    text.includes("pas regulier") ||
-    text.includes("irregulier") ||
-    text.includes("ca depend") ||
-    text.includes("attirer plus") ||
-    text.includes("demandes entrantes")
+    text.includes("instagram") ||
+    text.includes("linkedin") ||
+    text.includes("bouche") ||
+    text.includes("seo") ||
+    text.includes("google") ||
+    text.includes("publicite") ||
+    text.includes("contenu") ||
+    text.includes("prospection")
   ) {
     tags.add("acquisition_instable");
   }
 
   if (
-    text.includes("convert") ||
-    text.includes("passent pas") ||
-    text.includes("passage a l'action") ||
-    text.includes("confiance avant")
-  ) {
-    tags.add("conversion_faible");
-  }
-
-  if (
-    text.includes("bonnes personnes") ||
-    text.includes("qualifier") ||
-    text.includes("qualifies") ||
-    text.includes("pas prets")
-  ) {
-    tags.add("prospects_non_qualifies");
-  }
-
-  if (
-    text.includes("garder le lien") ||
+    text.includes("relancer") ||
     text.includes("relance") ||
     text.includes("suivi") ||
-    text.includes("perds le lien") ||
-    text.includes("messages prives")
+    text.includes("garder le lien") ||
+    text.includes("dm") ||
+    text.includes("messages prives") ||
+    text.includes("rien de structure") ||
+    text.includes("perdre") ||
+    text.includes("perdent")
   ) {
     tags.add("manque_suivi");
   }
 
   if (
-    text.includes("tout repose") ||
+    text.includes("qualifier") ||
+    text.includes("mieux comprendre") ||
+    text.includes("besoin") ||
+    text.includes("prospects mieux prepares") ||
+    text.includes("bonnes personnes")
+  ) {
+    tags.add("prospects_non_qualifies");
+  }
+
+  if (
+    text.includes("confiance") ||
+    text.includes("rassurer") ||
+    text.includes("achat") ||
+    text.includes("closing") ||
+    text.includes("passage a l'action") ||
+    text.includes("passer a l'action")
+  ) {
+    tags.add("conversion_faible");
+  }
+
+  if (
+    text.includes("repose") ||
     text.includes("temps") ||
-    text.includes("fatigue") ||
+    text.includes("energie") ||
+    text.includes("charge mentale") ||
+    text.includes("tout gerer") ||
     text.includes("manuellement") ||
-    text.includes("moi")
+    text.includes("moi-meme") ||
+    text.includes("au feeling") ||
+    text.includes("regulierement")
   ) {
     tags.add("dependance_humaine");
   }
 
   if (
     text.includes("rien de structure") ||
-    text.includes("je ne sais pas") ||
-    text.includes("pas vraiment")
+    text.includes("au feeling") ||
+    text.includes("pas vraiment") ||
+    text.includes("je ne sais pas")
   ) {
     tags.add("aucun_systeme");
   }
 
   if (
     text.includes("lead magnet") ||
-    text.includes("quiz") ||
-    text.includes("diagnostic") ||
+    text.includes("challenge") ||
+    text.includes("live") ||
+    text.includes("newsletter") ||
+    text.includes("emails") ||
     text.includes("experience interactive") ||
-    text.includes("sequence email")
+    text.includes("communaute")
   ) {
     tags.add("maturite_lead_magnet");
   }
 
-  if (
-    stepId === "projection" && !text.includes("pas sur")) {
+  if (stepId === "positive_projection") {
     tags.add("interet_relais");
   }
 
@@ -257,111 +307,84 @@ function getReaction(stepId: string, value: string | string[], allTags: Tag[]) {
   const text = normalizeText(Array.isArray(value) ? value.join(" ") : value);
   const has = (tag: Tag) => allTags.includes(tag);
 
-  if (stepId === "main_gap") {
-    const selected = Array.isArray(value) ? value : [value];
-
-    if (selected.length >= 3) {
-      return "Ah oui, je vois 🙂\n\nIl y a plusieurs sujets en même temps. Souvent, ça veut dire que le problème n’est pas juste à un endroit précis… mais plutôt dans tout le parcours entre l’intérêt et le passage à l’action.";
-    }
-
-    if (has("dependance_humaine")) {
-      return "Je comprends.\n\nQuand beaucoup de choses reposent encore sur toi, même une activité qui fonctionne peut vite devenir lourde à porter.";
-    }
-
-    if (has("manque_suivi") && has("conversion_faible")) {
-      return "Oui… je vois très bien le sujet.\n\nIl y a de l’intérêt, mais le moment entre “je suis intéressé” et “je passe à l’action” semble encore fragile.";
-    }
-
-    if (has("prospects_non_qualifies")) {
-      return "Hmm, intéressant 🙂\n\nDonc le sujet n’est peut-être pas seulement d’attirer plus de monde… mais surtout d’attirer les bonnes personnes, au bon moment.";
-    }
-
-    if (has("conversion_faible")) {
-      return "Oui, ça parle beaucoup ça.\n\nIl y a peut-être déjà de l’intérêt autour de ton activité, mais quelque chose bloque encore avant la décision.";
-    }
-
-    if (has("manque_suivi")) {
-      return "Je vois.\n\nC’est souvent là que ça se joue : les personnes montrent un intérêt, puis le lien se dilue parce qu’il n’y a pas vraiment de relais derrière.";
-    }
-
-    if (has("acquisition_instable")) {
-      return "Ok, je comprends 🙂\n\nLe sujet semble surtout tourner autour de la régularité : réussir à créer plus d’opportunités, sans dépendre uniquement des moments où tout s’aligne.";
-    }
-  }
-
   if (stepId === "business_context") {
-    return "Merci, c’est beaucoup plus clair 🙂\n\nJe vais garder ton activité en tête pour lire la suite avec le bon angle.";
+    return "Merci, c’est beaucoup plus clair 🙂\n\nJe vais garder ton activité en tête pour regarder la suite avec le bon angle.";
   }
 
-  if (stepId === "current_acquisition") {
-    return "Intéressant.\n\nTu as déjà des points d’entrée vers ton activité. Maintenant, la vraie question, c’est ce qui se passe après ce premier contact.";
+  if (stepId === "discovery_channels") {
+    if (text.includes("bouche") && !text.includes("publicite")) {
+      return "Intéressant.\n\nLe bouche-à-oreille crée souvent une confiance forte, mais il peut aussi rendre l’acquisition moins prévisible si rien ne vient soutenir le flux.";
+    }
+
+    if (text.includes("contenu") || text.includes("instagram") || text.includes("linkedin")) {
+      return "Je vois.\n\nTu as donc déjà des points d’entrée vers ton activité. La vraie question devient souvent : qu’est-ce qui se passe après cette première attention ?";
+    }
+
+    return "Ok, je note.\n\nÇa me donne une première lecture de la façon dont les personnes arrivent jusqu’à toi aujourd’hui.";
   }
 
-  if (stepId === "friction_detail") {
-    if (has("conversion_faible")) {
-      return "Oui, je vois.\n\nDans ce cas, le sujet n’est peut-être pas juste d’être plus visible. Il y a sûrement une étape à créer pour aider les personnes à mûrir leur décision.";
+  if (stepId === "engagement_channels") {
+    if (text.includes("rien de structure")) {
+      return "Ok, je vois.\n\nDonc une fois l’intérêt créé, la continuité dépend encore beaucoup du moment, de ton énergie ou des échanges directs. C’est souvent là que de bonnes opportunités se refroidissent.";
     }
 
-    if (has("manque_suivi")) {
-      return "Je comprends.\n\nC’est typiquement le genre de moment où un relais peut éviter que l’intérêt retombe… ou que tout repose sur des relances manuelles.";
-    }
-
-    if (has("dependance_humaine")) {
-      return "Ah oui… ça peut vite devenir lourd.\n\nAttirer, expliquer, rassurer, relancer, qualifier… quand tout passe par toi, la charge monte très vite.";
-    }
-
-    return "Je comprends 🙂\n\nCe que tu décris est précieux, parce que ça montre l’endroit exact où le parcours prospect perd peut-être de l’élan.";
-  }
-
-  if (stepId === "relay_system") {
-    if (has("aucun_systeme")) {
-      return "Ok, je vois.\n\nDonc aujourd’hui, entre l’intérêt et la suite, il n’y a pas encore vraiment de relais structuré. C’est souvent là que de bonnes opportunités se perdent.";
+    if (text.includes("dm") || text.includes("appel")) {
+      return "Je comprends.\n\nLe lien existe, mais il passe encore beaucoup par de l’échange humain direct. C’est qualitatif, mais ça peut vite devenir difficile à tenir quand le volume augmente.";
     }
 
     if (has("maturite_lead_magnet")) {
-      return "Ah intéressant 🙂\n\nTu as déjà une base. La question maintenant, c’est : est-ce que ce système aide vraiment les prospects à avancer avant d’échanger avec toi ?";
+      return "Intéressant 🙂\n\nTu as déjà une forme de relais. La question maintenant, c’est de savoir s’il aide vraiment les personnes à avancer, se clarifier et arriver plus prêtes à la suite.";
     }
 
-    return "Ok, je note.\n\nÇa me permet de voir s’il existe déjà une continuité entre la première curiosité et le passage à l’action.";
+    return "Ok, c’est utile.\n\nJe commence à voir comment l’intérêt continue à vivre après le premier contact.";
   }
 
-  if (stepId === "lead_magnet_awareness") {
-    const selected = Array.isArray(value) ? value : [value];
-
-    if (selected.includes("Je ne connais pas vraiment")) {
-      return "Pas de souci 🙂\n\nBeaucoup d’entrepreneurs utilisent déjà des formes de lead magnets sans forcément mettre ce mot dessus : quiz, ressources, mini diagnostics, contenus gratuits…";
+  if (stepId === "human_load") {
+    if (has("dependance_humaine") && has("manque_suivi")) {
+      return "Oui, je vois très bien.\n\nUne partie importante du parcours semble encore reposer sur ta disponibilité : répondre, expliquer, relancer, maintenir le lien. C’est souvent invisible, mais très énergivore.";
     }
 
-    if (
-      selected.includes("Une expérience interactive") &&
-      selected.includes("Un moyen d’engager ou qualifier les prospects")
-    ) {
-      return "Ah, intéressant 🙂\n\nTu le vois déjà comme quelque chose de plus vivant qu’un simple contenu gratuit. Et c’est exactement là que ça devient stratégique.";
+    if (has("prospects_non_qualifies")) {
+      return "Je comprends.\n\nLe sujet n’est pas seulement d’attirer plus de monde. Il y a aussi tout ce travail de clarification avant que la personne soit vraiment prête à avancer.";
     }
 
-    if (
-      selected.includes("Un PDF gratuit ou une checklist") &&
-      selected.includes("Un moyen de récupérer des emails")
-    ) {
-      return "Oui, c’est souvent la première image qu’on en a.\n\nUn contenu gratuit, un email en échange… Mais en réalité, ça peut aller beaucoup plus loin que ça.";
-    }
-
-    if (
-      selected.includes("Un quiz ou un diagnostic") ||
-      selected.includes("Une expérience interactive")
-    ) {
-      return "Oui 🙂\n\nEt quand c’est bien pensé, ce type d’expérience peut déjà engager, qualifier et préparer la suite naturellement.";
-    }
-
-    return "Oui 🙂\n\nAujourd’hui, les lead magnets les plus intéressants ne servent pas seulement à capter un email. Ils créent déjà une première relation.";
+    return "Je vois.\n\nCe que tu viens de sélectionner montre où ton énergie est le plus sollicitée dans le parcours prospect.";
   }
 
-  if (stepId === "projection") {
-    if (text.includes("pas sur")) {
-      return "Je comprends.\n\nParfois, ce besoin n’est pas évident tant qu’on n’a pas vu ce que ce type de système peut révéler côté prospect.";
+  if (stepId === "three_month_risk") {
+    if (has("dependance_humaine")) {
+      return "Oui… et c’est souvent là que le sujet devient plus profond que l’acquisition.\n\nSi le système dépend trop de toi, la croissance peut finir par créer plus de charge que de liberté.";
     }
 
-    return "Très clair 🙂\n\nLà, on voit bien que la valeur n’est pas seulement dans l’automatisation. Elle est surtout dans la qualité de la relation créée avant même l’échange humain.";
+    if (has("manque_suivi")) {
+      return "Je comprends.\n\nLe risque, ce n’est pas forcément de manquer d’intérêt autour de ton activité. C’est plutôt de laisser une partie de cet intérêt retomber faute de continuité.";
+    }
+
+    return "Merci, c’est précieux.\n\nÇa permet de voir ce que la situation actuelle pourrait continuer à produire si rien ne devient plus fluide.";
+  }
+
+  if (stepId === "positive_projection") {
+    return "Très clair 🙂\n\nLà, on commence à voir ce qui créerait vraiment de la valeur : pas remplacer la relation, mais rendre certaines étapes plus fluides, plus régulières et moins dépendantes de ton énergie disponible.";
+  }
+
+  if (stepId === "ai_skepticism") {
+    if (text.includes("pas vraiment de doute")) {
+      return "Ok, intéressant.\n\nDans ce cas, l’enjeu sera surtout de voir où l’IA peut apporter de la fluidité sans complexifier ton fonctionnement.";
+    }
+
+    if (text.includes("faux") || text.includes("robotique") || text.includes("impersonnelles")) {
+      return "Je comprends complètement.\n\nUne IA mal pensée peut vite donner cette impression. C’est justement pour ça que l’objectif n’est pas de faire semblant d’être humain, mais de soutenir la relation avec un cadre clair et supervisé.";
+    }
+
+    if (text.includes("controle")) {
+      return "Oui, c’est un point essentiel.\n\nUne IA utile dans la relation client doit rester contrôlable : ton ton, tes limites, tes intentions, et ce qui doit être transmis à l’humain.";
+    }
+
+    return "C’est une réserve très saine.\n\nL’IA ne devrait pas rendre la relation plus froide. Elle devrait surtout enlever de la friction autour de ce qui peut être préparé, clarifié ou suivi.";
+  }
+
+  if (stepId === "human_boundary") {
+    return "Exactement.\n\nC’est cette limite qui compte : l’IA peut préparer, clarifier, qualifier ou maintenir le lien… mais la confiance, la nuance et les décisions importantes doivent rester humaines.";
   }
 
   return "Merci, c’est noté 🙂";
@@ -369,29 +392,29 @@ function getReaction(stepId: string, value: string | string[], allTags: Tag[]) {
 
 function buildSummary(tags: Tag[], answers: Record<string, string | string[]>) {
   const has = (tag: Tag) => tags.includes(tag);
+  const business = answers.business_context;
+  const businessIntro =
+    typeof business === "string" && business.trim()
+      ? `Tu m’as expliqué ceci sur ton activité : ${business.trim()}`
+      : "Ton activité semble dépendre d’une relation de confiance avec les bonnes personnes";
 
   if (has("dependance_humaine") && has("manque_suivi")) {
-    return "Ce que je retiens surtout : une partie importante du parcours semble encore reposer sur toi, notamment le suivi, la relance ou la continuité avec les prospects.";
+    return `${businessIntro}. Ce que je retiens surtout : une partie importante du parcours prospect semble encore reposer sur ta disponibilité personnelle, notamment pour expliquer, rassurer, relancer ou maintenir le lien.`;
   }
 
   if (has("prospects_non_qualifies") || has("conversion_faible")) {
-    return "Ce que je retiens surtout : le sujet n’est pas seulement d’attirer plus de monde. Il semble surtout important d’aider les bonnes personnes à comprendre plus vite si ton offre est faite pour elles.";
+    return `${businessIntro}. Ce que je retiens surtout : le sujet n’est pas seulement d’attirer plus de monde, mais d’aider les bonnes personnes à se clarifier, à comprendre la valeur de ton offre et à arriver plus prêtes à la suite.`;
   }
 
   if (has("aucun_systeme")) {
-    return "Ce que je retiens surtout : il y a peut-être un vrai espace à créer entre la première curiosité et la suite du parcours. Un relais plus clair pourrait éviter que l’intérêt se perde.";
+    return `${businessIntro}. Ce que je retiens surtout : il y a probablement un espace à structurer entre l’intérêt initial et le passage à l’action, pour éviter que les personnes intéressées disparaissent ou refroidissent.`;
   }
 
   if (has("maturite_lead_magnet")) {
-    return "Ce que je retiens surtout : tu as déjà une certaine conscience des outils d’acquisition. Le prochain niveau serait de rendre ce point d’entrée plus qualifiant, plus relationnel et plus utile pour la suite.";
+    return `${businessIntro}. Ce que je retiens surtout : tu as déjà des points de relais avec tes prospects. Le prochain niveau serait de les rendre plus personnalisés, plus qualifiants et plus utiles pour préparer la relation humaine.`;
   }
 
-  const business = answers.business_context;
-  if (typeof business === "string" && business.trim()) {
-    return "Ce que je retiens surtout : ton activité gagnerait sûrement à mieux capter ce qui se passe dans la tête du prospect avant qu’il arrive jusqu’à un échange humain.";
-  }
-
-  return "Ce que je retiens surtout : il y a un espace intéressant entre acquisition, qualification et conversion. C’est précisément cet espace qu’un lead magnet conversationnel peut éclairer.";
+  return `${businessIntro}. Ce que je retiens surtout : il existe un espace intéressant entre visibilité, intérêt, confiance et passage à l’action. C’est précisément cet espace qu’une expérience IA supervisée peut aider à fluidifier.`;
 }
 
 function Typewriter({
@@ -671,7 +694,7 @@ export default function Home() {
       setPhase("leadCapture");
       setTimeout(() => {
         addAgent(
-          "Je peux t’envoyer l’exemple complet 🙂\n\nTu verras les deux faces : ce que vit le prospect, et ce que tu récupères côté entreprise.\n\nOù puis-je te l’envoyer ?"
+          "Je peux maintenant t’envoyer ta synthèse personnalisée 🙂\n\nElle reprend ce qui semble bloquer, ce qui pourrait devenir plus fluide, et la place que pourrait prendre une IA supervisée sans remplacer l’humain.\n\nOù puis-je te l’envoyer ? Pense à regarder tes mails ensuite."
         );
       }, 350);
     }
@@ -750,19 +773,26 @@ export default function Home() {
           ? "Prospect tiède"
           : "Prospect découverte",
       summary,
-      mainGap: answers.main_gap ?? "",
       business: answers.business_context ?? "",
-      acquisition: Array.isArray(answers.current_acquisition)
-        ? answers.current_acquisition.join(", ")
-        : answers.current_acquisition ?? "",
-      frustration: answers.friction_detail ?? "",
-      relaySystem: Array.isArray(answers.relay_system)
-        ? answers.relay_system.join(", ")
-        : answers.relay_system ?? "",
-      leadMagnetAwareness: answers.lead_magnet_awareness ?? "",
-      projection: Array.isArray(answers.projection)
-        ? answers.projection.join(", ")
-        : answers.projection ?? "",
+      discoveryChannels: Array.isArray(answers.discovery_channels)
+        ? answers.discovery_channels.join(", ")
+        : answers.discovery_channels ?? "",
+      engagementChannels: Array.isArray(answers.engagement_channels)
+        ? answers.engagement_channels.join(", ")
+        : answers.engagement_channels ?? "",
+      humanLoad: Array.isArray(answers.human_load)
+        ? answers.human_load.join(", ")
+        : answers.human_load ?? "",
+      threeMonthRisk: answers.three_month_risk ?? "",
+      positiveProjection: Array.isArray(answers.positive_projection)
+        ? answers.positive_projection.join(", ")
+        : answers.positive_projection ?? "",
+      aiSkepticism: Array.isArray(answers.ai_skepticism)
+        ? answers.ai_skepticism.join(", ")
+        : answers.ai_skepticism ?? "",
+      humanBoundary: Array.isArray(answers.human_boundary)
+        ? answers.human_boundary.join(", ")
+        : answers.human_boundary ?? "",
     };
 
     localStorage.setItem("diag-clarte-lead", JSON.stringify(payload));
@@ -792,17 +822,17 @@ export default function Home() {
           </div>
 
           <h1 className="font-serif text-4xl leading-[0.95] sm:text-5xl">
-            Un mini agent.
+            Attirer des clients.
             <br />
-            <span className="text-[#8E63E8]">Une vraie prise de recul.</span>
+            <span className="text-[#8E63E8]">Sans tout porter seul.</span>
             <br />
-            Plus de clarté.
+            Avec plus de clarté.
           </h1>
 
           <p className="mt-6 text-sm leading-6 text-[#25255A]/75">
-            Une courte expérience conversationnelle pour observer où tes
-            prospects se perdent peut-être entre l’intérêt et le passage à
-            l’action.
+            Une courte expérience conversationnelle pour voir comment les bonnes
+            personnes te découvrent, ce qui les aide à avancer, et ce qui
+            pourrait devenir plus fluide dans ton acquisition.
           </p>
 
           <button
@@ -859,12 +889,11 @@ export default function Home() {
 
           <div className="mt-8 rounded-2xl border border-[#E5DDD0] bg-white px-5 py-5 text-left sm:px-6">
             <p className="font-semibold">
-              Maintenant, tu peux voir les deux faces du système :
+              Maintenant, tu peux visualiser comment ce type d’expérience peut fonctionner :
             </p>
 
             <p className="mt-2 text-sm leading-6 text-[#25255A]/70">
-              L’expérience vécue par le prospect, puis les données récupérées
-              côté entreprise.
+              une expérience côté prospect, puis les informations utiles récupérées côté entreprise.
             </p>
           </div>
 
@@ -874,7 +903,7 @@ export default function Home() {
               target="_blank"
               className="block w-full rounded-2xl bg-[#8E63E8] px-5 py-4 text-center font-semibold text-white transition hover:scale-[1.01] sm:px-6"
             >
-              Tester le lead magnet côté prospect →
+              Voir l’expérience côté prospect →
             </a>
 
             <a
@@ -894,8 +923,8 @@ export default function Home() {
 
               <p className="mt-2 text-sm leading-6 text-[#25255A]/70">
                 Ce que tu as partagé laisse penser que le sujet dépasse peut-être
-                le simple lead magnet : suivi, relances, qualification, charge
-                mentale… AURA™ peut t’aider à regarder ça plus en profondeur.
+                une simple expérience d’entrée : suivi, qualification, charge
+                mentale, continuité relationnelle… AURA™ peut t’aider à regarder ça plus en profondeur.
               </p>
 
               <a
@@ -1067,7 +1096,7 @@ export default function Home() {
                       : "cursor-not-allowed bg-[#BEB8B0]"
                   }`}
                 >
-                  {sending ? "Envoi en cours..." : "Recevoir l’exemple →"}
+                  {sending ? "Envoi en cours..." : "Recevoir ma synthèse →"}
                 </button>
               </div>
             )}
@@ -1083,23 +1112,21 @@ export default function Home() {
             <div className="rounded-2xl border border-[#E5DDD0] bg-white/70 p-4 sm:p-5">
               <p className="font-semibold">Une vraie conversation</p>
               <p className="mt-2 text-xs leading-5 text-[#25255A]/65">
-                Clarté rebondit selon tes réponses pour éviter l’effet formulaire.
+                Clarté avance avec tes réponses pour comprendre ton activité, pas pour remplir un formulaire.
               </p>
             </div>
 
             <div className="rounded-2xl border border-[#E5DDD0] bg-white/70 p-4 sm:p-5">
-              <p className="font-semibold">Des signaux utiles</p>
+              <p className="font-semibold">Une vraie prise de recul</p>
               <p className="mt-2 text-xs leading-5 text-[#25255A]/65">
-                L’agent repère les sujets : acquisition, suivi, qualification,
-                conversion, dépendance humaine.
+                L’agent fait ressortir ce qui bloque, ce qui pèse encore sur toi, et ce qui pourrait devenir plus fluide.
               </p>
             </div>
 
             <div className="rounded-2xl border border-[#E5DDD0] bg-white/70 p-4 sm:p-5">
-              <p className="font-semibold">Un exemple concret</p>
+              <p className="font-semibold">Une synthèse personnalisée</p>
               <p className="mt-2 text-xs leading-5 text-[#25255A]/65">
-                À la fin, tu verras comment un lead magnet conversationnel peut
-                fonctionner côté prospect et côté entreprise.
+                À la fin, tu reçois une synthèse claire avec les frictions détectées et les opportunités possibles.
               </p>
             </div>
           </div>
