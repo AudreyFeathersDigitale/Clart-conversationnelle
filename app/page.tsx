@@ -57,7 +57,24 @@ type ChatMessage = {
   role: "agent" | "user" | "card";
   text: string;
   typed?: boolean;
-  action?: "nextIntro" | "showQuestionInputs" | "afterReaction" | "nextInsight";
+  action?:
+    | "nextIntro"
+    | "showQuestionInputs"
+    | "afterReaction"
+    | "nextInsight"
+    | "askDynamicFollowup"
+    | "showDynamicFollowupInputs"
+    | "afterDynamicFollowup";
+};
+
+type AiReactionResponse = {
+  reaction: string;
+  shouldAskFollowup: boolean;
+  followupQuestion: string | null;
+};
+
+type AiSummaryResponse = {
+  summary: string;
 };
 
 const steps: Step[] = [
@@ -417,6 +434,109 @@ function buildSummary(tags: Tag[], answers: Record<string, string | string[]>) {
   return `${businessIntro}. Ce que je retiens surtout : il existe un espace intéressant entre visibilité, intérêt, confiance et passage à l’action. C’est précisément cet espace qu’une expérience IA supervisée peut aider à fluidifier.`;
 }
 
+async function getAiReaction({
+  currentStepId,
+  currentQuestion,
+  userAnswer,
+  previousAnswers,
+  remainingQuestions,
+  followupAlreadyAsked,
+  fallbackReaction,
+}: {
+  currentStepId: string;
+  currentQuestion: string;
+  userAnswer: string | string[];
+  previousAnswers: Record<string, string | string[]>;
+  remainingQuestions: { id: string; question: string }[];
+  followupAlreadyAsked: boolean;
+  fallbackReaction: string;
+}): Promise<AiReactionResponse> {
+  try {
+    const response = await fetch("/api/clarte-reaction", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        currentStepId,
+        currentQuestion,
+        userAnswer,
+        previousAnswers,
+        remainingQuestions,
+        followupAlreadyAsked,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Erreur API Clarté reaction");
+    }
+
+    const data = (await response.json()) as Partial<AiReactionResponse>;
+
+    return {
+      reaction:
+        typeof data.reaction === "string" && data.reaction.trim()
+          ? data.reaction.trim()
+          : fallbackReaction,
+      shouldAskFollowup: Boolean(data.shouldAskFollowup),
+      followupQuestion:
+        typeof data.followupQuestion === "string" && data.followupQuestion.trim()
+          ? data.followupQuestion.trim()
+          : null,
+    };
+  } catch (error) {
+    console.error("Erreur réaction IA :", error);
+
+    return {
+      reaction: fallbackReaction,
+      shouldAskFollowup: false,
+      followupQuestion: null,
+    };
+  }
+}
+
+async function getAiSummary({
+  answers,
+  tags,
+  score,
+  leadTemperature,
+  fallbackSummary,
+}: {
+  answers: Record<string, string | string[]>;
+  tags: Tag[];
+  score: number;
+  leadTemperature: string;
+  fallbackSummary: string;
+}): Promise<string> {
+  try {
+    const response = await fetch("/api/clarte-summary", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        answers,
+        tags,
+        score,
+        leadTemperature,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Erreur API Clarté summary");
+    }
+
+    const data = (await response.json()) as Partial<AiSummaryResponse>;
+
+    return typeof data.summary === "string" && data.summary.trim()
+      ? data.summary.trim()
+      : fallbackSummary;
+  } catch (error) {
+    console.error("Erreur synthèse IA :", error);
+    return fallbackSummary;
+  }
+}
+
 function Typewriter({
   text,
   speed = 16,
@@ -552,6 +672,12 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
 
+  const [followupAlreadyAsked, setFollowupAlreadyAsked] = useState(false);
+  const [dynamicQuestion, setDynamicQuestion] = useState("");
+  const [dynamicAnswer, setDynamicAnswer] = useState("");
+  const [aiSummary, setAiSummary] = useState("");
+  const [loadingReaction, setLoadingReaction] = useState(false);
+
   const conversationBottomRef = useRef<HTMLDivElement | null>(null);
   const currentQuestion = steps[currentStep];
 
@@ -576,13 +702,14 @@ export default function Home() {
   }, [score]);
 
   const summary = useMemo(() => buildSummary(tags, answers), [tags, answers]);
+  const displayedSummary = aiSummary || summary;
 
   useEffect(() => {
     conversationBottomRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "end",
     });
-  }, [messages, phase, textAnswer, selectedChoices, questionReady]);
+  }, [messages, phase, textAnswer, selectedChoices, questionReady, dynamicAnswer, loadingReaction]);
 
   const addAgent = (text: string, action?: ChatMessage["action"]) => {
     setMessages((prev) => [
@@ -641,7 +768,7 @@ export default function Home() {
     addAgent(steps[0].question, "showQuestionInputs");
   };
 
-  const handleMessageDone = (message: ChatMessage) => {
+  const handleMessageDone = async (message: ChatMessage) => {
     if (message.action === "nextIntro") {
       const nextIndex = introIndex + 1;
 
@@ -664,13 +791,41 @@ export default function Home() {
       return;
     }
 
-    if (message.action === "afterReaction") {
+    if (message.action === "askDynamicFollowup") {
+      addAgent(dynamicQuestion, "showDynamicFollowupInputs");
+      return;
+    }
+
+    if (message.action === "showDynamicFollowupInputs") {
+      setQuestionReady(true);
+      return;
+    }
+
+    if (message.action === "afterDynamicFollowup") {
+      setDynamicQuestion("");
+      setDynamicAnswer("");
+    }
+
+    if (
+      message.action === "afterReaction" ||
+      message.action === "afterDynamicFollowup"
+    ) {
       const nextStep = currentStep + 1;
 
       if (nextStep >= steps.length) {
         setPhase("insight");
         setInsightIndex(0);
-        addAgent(summary, "nextInsight");
+
+        const generatedSummary = await getAiSummary({
+          answers,
+          tags,
+          score,
+          leadTemperature,
+          fallbackSummary: summary,
+        });
+
+        setAiSummary(generatedSummary);
+        addAgent(generatedSummary, "nextInsight");
         return;
       }
 
@@ -700,7 +855,7 @@ export default function Home() {
     }
   };
 
-  const submitStepAnswer = (value: string | string[]) => {
+  const submitStepAnswer = async (value: string | string[]) => {
     const normalizedValue = Array.isArray(value)
       ? value.filter(Boolean)
       : value.trim();
@@ -714,19 +869,71 @@ export default function Home() {
 
     const newStepTags = detectTags(currentQuestion.id, normalizedValue);
     const newTags = Array.from(new Set([...tags, ...newStepTags]));
-
-    setAnswers((prev) => ({
-      ...prev,
+    const nextAnswers = {
+      ...answers,
       [currentQuestion.id]: normalizedValue,
-    }));
+    };
+
+    setAnswers(nextAnswers);
     setTags(newTags);
 
     addUser(visibleAnswer);
     setQuestionReady(false);
-    addAgent(getReaction(currentQuestion.id, normalizedValue, newTags), "afterReaction");
+    setLoadingReaction(true);
+
+    const fallbackReaction = getReaction(
+      currentQuestion.id,
+      normalizedValue,
+      newTags
+    );
+
+    const aiReaction = await getAiReaction({
+      currentStepId: currentQuestion.id,
+      currentQuestion: currentQuestion.question,
+      userAnswer: normalizedValue,
+      previousAnswers: nextAnswers,
+      remainingQuestions: steps.slice(currentStep + 1).map((step) => ({
+        id: step.id,
+        question: step.question,
+      })),
+      followupAlreadyAsked,
+      fallbackReaction,
+    });
+
+    setLoadingReaction(false);
+
+    if (
+      aiReaction.shouldAskFollowup &&
+      aiReaction.followupQuestion &&
+      !followupAlreadyAsked
+    ) {
+      setDynamicQuestion(aiReaction.followupQuestion);
+      setFollowupAlreadyAsked(true);
+      addAgent(aiReaction.reaction, "askDynamicFollowup");
+    } else {
+      addAgent(aiReaction.reaction, "afterReaction");
+    }
 
     setTextAnswer("");
     setSelectedChoices([]);
+  };
+
+  const submitDynamicFollowupAnswer = () => {
+    const answer = dynamicAnswer.trim();
+    if (!answer) return;
+
+    addUser(answer);
+    setQuestionReady(false);
+
+    setAnswers((prev) => ({
+      ...prev,
+      [`followup_${currentQuestion.id}`]: answer,
+    }));
+
+    addAgent(
+      "Oui… merci. C’est utile à garder en tête pour la suite.",
+      "afterDynamicFollowup"
+    );
   };
 
   const toggleChoice = (option: string) => {
@@ -772,7 +979,7 @@ export default function Home() {
           : leadTemperature === "Tiède"
           ? "Prospect tiède"
           : "Prospect découverte",
-      summary,
+      summary: displayedSummary,
       business: answers.business_context ?? "",
       discoveryChannels: Array.isArray(answers.discovery_channels)
         ? answers.discovery_channels.join(", ")
@@ -884,7 +1091,7 @@ export default function Home() {
 
           <div className="mt-6 rounded-2xl border border-[#E5DDD0] bg-white px-5 py-5 text-left sm:px-6">
             <p className="font-semibold">Ce que Clarté a repéré :</p>
-            <p className="mt-2 text-sm leading-6 text-[#25255A]/70">{summary}</p>
+            <p className="mt-2 text-sm leading-6 text-[#25255A]/70">{displayedSummary}</p>
           </div>
 
           <div className="mt-8 rounded-2xl border border-[#E5DDD0] bg-white px-5 py-5 text-left sm:px-6">
@@ -941,14 +1148,19 @@ export default function Home() {
     );
   }
 
+  const currentIsDynamic =
+    phase === "diagnostic" && questionReady && dynamicQuestion.length > 0;
+
   const currentIsText =
     phase === "diagnostic" &&
     questionReady &&
+    !dynamicQuestion &&
     currentQuestion.type === "text";
 
   const currentIsChoice =
     phase === "diagnostic" &&
     questionReady &&
+    !dynamicQuestion &&
     currentQuestion.type === "choice";
 
   const progress = started
@@ -1002,6 +1214,35 @@ export default function Home() {
                 />
               );
             })}
+
+            {loadingReaction && (
+              <div className="ml-11 max-w-[220px] rounded-2xl bg-[#F7F3ED] px-4 py-3 text-sm leading-6 text-[#25255A]/60 sm:ml-14">
+                Clarté prend une seconde…
+              </div>
+            )}
+
+            {currentIsDynamic && (
+              <div className="scroll-mt-32 space-y-4">
+                <textarea
+                  value={dynamicAnswer}
+                  onChange={(e) => setDynamicAnswer(e.target.value)}
+                  placeholder="Réponds simplement, avec tes mots…"
+                  className="min-h-[120px] w-full rounded-2xl border border-[#E5DDD0] bg-white px-4 py-3 outline-none transition focus:border-[#8E63E8] sm:min-h-[150px] sm:px-5 sm:py-4"
+                />
+
+                <button
+                  onClick={submitDynamicFollowupAnswer}
+                  disabled={!dynamicAnswer.trim()}
+                  className={`w-full rounded-2xl px-5 py-4 font-semibold text-white transition sm:px-6 ${
+                    dynamicAnswer.trim()
+                      ? "bg-[#8E63E8] hover:scale-[1.01]"
+                      : "cursor-not-allowed bg-[#BEB8B0]"
+                  }`}
+                >
+                  Envoyer →
+                </button>
+              </div>
+            )}
 
             {currentIsText && (
               <div className="scroll-mt-32 space-y-4">
