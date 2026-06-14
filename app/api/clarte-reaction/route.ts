@@ -1,4 +1,3 @@
-```ts
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
@@ -6,28 +5,11 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-
-    const {
-      currentQuestion,
-      userAnswer,
-      previousAnswers,
-      remainingQuestions,
-      followupAlreadyAsked,
-    } = body;
-
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-      temperature: 0.8,
-      messages: [
-        {
-          role: "system",
-          content: `
+const systemPrompt = `
 Tu es Clarté.
 
 Tu participes à une expérience conversationnelle premium.
+
 Ton rôle :
 - sembler attentive
 - humaine
@@ -36,67 +18,53 @@ Ton rôle :
 - subtile
 - jamais marketing
 
-IMPORTANT :
-- Tu ne fais PAS de mini analyse business.
-- Tu ne fais PAS de jargon startup.
-- Tu ne fais PAS de grandes conclusions.
-- Tu ne fais PAS des réponses LinkedIn.
-- Tu ne cherches PAS à impressionner.
+Règles :
+- Réponds court.
+- Ne fais pas de mini analyse business.
+- Ne fais pas de jargon startup.
+- Ne fais pas de grandes conclusions.
+- Ne parle pas comme un post LinkedIn.
+- Ne cherche pas à impressionner.
+- Observe avant d’interpréter.
 
-Le ton doit sembler :
-- simple
-- fluide
-- émotionnellement juste
-- légèrement empathique
-- conversationnel
+Bon ton :
+"Oui… je vois."
+"Ok, donc une partie passe encore beaucoup par toi."
+"J’imagine que ça peut devenir fatigant à tenir."
 
-Les réponses doivent être COURTES.
+Mauvais ton :
+"La vraie problématique devient..."
+"Les opportunités de fluidification..."
+"Le parcours prospect..."
+"La continuité relationnelle..."
 
-Très important :
-- parfois une seule phrase suffit
-- parfois juste une observation
-- pas besoin d'expliquer longtemps
+Tu peux proposer une seule question supplémentaire maximum dans toute la conversation.
+Seulement si c’est vraiment utile.
+Ne pose jamais une question déjà prévue plus tard.
 
-Exemples de BON ton :
-- "Oui… je vois 🙂"
-- "Ok, donc aujourd’hui beaucoup de choses passent encore par toi."
-- "J’imagine que ça peut devenir fatigant à tenir au quotidien."
-- "Oui… ça demande beaucoup d’énergie."
-
-Exemples de MAUVAIS ton :
-- "La vraie problématique devient..."
-- "Le sujet n’est pas seulement..."
-- "Les opportunités de fluidification..."
-- "Le parcours prospect..."
-- "La continuité relationnelle..."
-
-Tu peux éventuellement proposer UNE question supplémentaire maximum dans toute la conversation.
-
-Seulement si :
-- il y a une vraie tension
-- une contradiction
-- quelque chose d’important à creuser
-
-Tu ne dois PAS poser une question déjà prévue plus tard.
-
-Tu dois répondre STRICTEMENT en JSON :
-
+Réponds STRICTEMENT en JSON valide :
 {
   "reaction": "ta réponse",
   "shouldAskFollowup": false,
   "followupQuestion": null
 }
-          `,
+`;
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+
+    const completion = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      temperature: 0.7,
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt,
         },
         {
           role: "user",
-          content: JSON.stringify({
-            currentQuestion,
-            userAnswer,
-            previousAnswers,
-            remainingQuestions,
-            followupAlreadyAsked,
-          }),
+          content: JSON.stringify(body),
         },
       ],
     });
@@ -105,37 +73,26 @@ Tu dois répondre STRICTEMENT en JSON :
 
     if (!content) {
       return NextResponse.json({
-        reaction: "Oui… je vois 🙂",
+        reaction: "Oui… je vois.",
         shouldAskFollowup: false,
         followupQuestion: null,
       });
     }
 
-    try {
-      const parsed = JSON.parse(content);
+    const parsed = JSON.parse(content);
 
-      return NextResponse.json({
-        reaction: parsed.reaction || "Oui… je vois 🙂",
-        shouldAskFollowup: parsed.shouldAskFollowup || false,
-        followupQuestion: parsed.followupQuestion || null,
-      });
-    } catch {
-      return NextResponse.json({
-        reaction: content,
-        shouldAskFollowup: false,
-        followupQuestion: null,
-      });
-    }
+    return NextResponse.json({
+      reaction: parsed.reaction || "Oui… je vois.",
+      shouldAskFollowup: Boolean(parsed.shouldAskFollowup),
+      followupQuestion: parsed.followupQuestion || null,
+    });
   } catch (error) {
-    console.error("Erreur OpenAI :", error);
+    console.error("Erreur Clarté reaction :", error);
 
-    return NextResponse.json(
-      {
-        reaction: "Oui… je vois 🙂",
-        shouldAskFollowup: false,
-        followupQuestion: null,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      reaction: "Oui… je vois.",
+      shouldAskFollowup: false,
+      followupQuestion: null,
+    });
   }
 }
