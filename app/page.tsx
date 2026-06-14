@@ -212,13 +212,6 @@ const steps: Step[] = [
   },
 ];
 
-const insightMessages = [
-  "Merci. J’ai maintenant une vision beaucoup plus claire de ce qui fonctionne déjà… et de ce qui repose encore beaucoup sur toi aujourd’hui.",
-  "Ce que tu viens de décrire montre surtout le chemin entre la visibilité, l’intérêt, la confiance et le passage à l’action.",
-  "C’est souvent dans cet espace que des prospects se perdent : pas parce qu’ils ne sont pas intéressés, mais parce qu’il manque parfois un relais clair, humain et régulier.",
-  "Je peux te préparer une synthèse personnalisée avec les points de friction, les opportunités de fluidification, ce qui pourrait être soutenu par une IA et ce qui devrait rester humain.",
-];
-
 function normalizeText(value: string) {
   return value
     .toLowerCase()
@@ -320,93 +313,6 @@ function detectTags(stepId: string, value: string | string[]): Tag[] {
   return Array.from(tags);
 }
 
-function getReaction(stepId: string, value: string | string[], allTags: Tag[]) {
-  const text = normalizeText(Array.isArray(value) ? value.join(" ") : value);
-  const has = (tag: Tag) => allTags.includes(tag);
-
-  if (stepId === "business_context") {
-    return "Merci, c’est beaucoup plus clair 🙂\n\nJe vais garder ton activité en tête pour regarder la suite avec le bon angle.";
-  }
-
-  if (stepId === "discovery_channels") {
-    if (text.includes("bouche") && !text.includes("publicite")) {
-      return "Intéressant.\n\nLe bouche-à-oreille crée souvent une confiance forte, mais il peut aussi rendre l’acquisition moins prévisible si rien ne vient soutenir le flux.";
-    }
-
-    if (text.includes("contenu") || text.includes("instagram") || text.includes("linkedin")) {
-      return "Je vois.\n\nTu as donc déjà des points d’entrée vers ton activité. La vraie question devient souvent : qu’est-ce qui se passe après cette première attention ?";
-    }
-
-    return "Ok, je note.\n\nÇa me donne une première lecture de la façon dont les personnes arrivent jusqu’à toi aujourd’hui.";
-  }
-
-  if (stepId === "engagement_channels") {
-    if (text.includes("rien de structure")) {
-      return "Ok, je vois.\n\nDonc une fois l’intérêt créé, la continuité dépend encore beaucoup du moment, de ton énergie ou des échanges directs. C’est souvent là que de bonnes opportunités se refroidissent.";
-    }
-
-    if (text.includes("dm") || text.includes("appel")) {
-      return "Je comprends.\n\nLe lien existe, mais il passe encore beaucoup par de l’échange humain direct. C’est qualitatif, mais ça peut vite devenir difficile à tenir quand le volume augmente.";
-    }
-
-    if (has("maturite_lead_magnet")) {
-      return "Intéressant 🙂\n\nTu as déjà une forme de relais. La question maintenant, c’est de savoir s’il aide vraiment les personnes à avancer, se clarifier et arriver plus prêtes à la suite.";
-    }
-
-    return "Ok, c’est utile.\n\nJe commence à voir comment l’intérêt continue à vivre après le premier contact.";
-  }
-
-  if (stepId === "human_load") {
-    if (has("dependance_humaine") && has("manque_suivi")) {
-      return "Oui, je vois très bien.\n\nUne partie importante du parcours semble encore reposer sur ta disponibilité : répondre, expliquer, relancer, maintenir le lien. C’est souvent invisible, mais très énergivore.";
-    }
-
-    if (has("prospects_non_qualifies")) {
-      return "Je comprends.\n\nLe sujet n’est pas seulement d’attirer plus de monde. Il y a aussi tout ce travail de clarification avant que la personne soit vraiment prête à avancer.";
-    }
-
-    return "Je vois.\n\nCe que tu viens de sélectionner montre où ton énergie est le plus sollicitée dans le parcours prospect.";
-  }
-
-  if (stepId === "three_month_risk") {
-    if (has("dependance_humaine")) {
-      return "Oui… et c’est souvent là que le sujet devient plus profond que l’acquisition.\n\nSi le système dépend trop de toi, la croissance peut finir par créer plus de charge que de liberté.";
-    }
-
-    if (has("manque_suivi")) {
-      return "Je comprends.\n\nLe risque, ce n’est pas forcément de manquer d’intérêt autour de ton activité. C’est plutôt de laisser une partie de cet intérêt retomber faute de continuité.";
-    }
-
-    return "Merci, c’est précieux.\n\nÇa permet de voir ce que la situation actuelle pourrait continuer à produire si rien ne devient plus fluide.";
-  }
-
-  if (stepId === "positive_projection") {
-    return "Très clair 🙂\n\nLà, on commence à voir ce qui créerait vraiment de la valeur : pas remplacer la relation, mais rendre certaines étapes plus fluides, plus régulières et moins dépendantes de ton énergie disponible.";
-  }
-
-  if (stepId === "ai_skepticism") {
-    if (text.includes("pas vraiment de doute")) {
-      return "Ok, intéressant.\n\nDans ce cas, l’enjeu sera surtout de voir où l’IA peut apporter de la fluidité sans complexifier ton fonctionnement.";
-    }
-
-    if (text.includes("faux") || text.includes("robotique") || text.includes("impersonnelles")) {
-      return "Je comprends complètement.\n\nUne IA mal pensée peut vite donner cette impression. C’est justement pour ça que l’objectif n’est pas de faire semblant d’être humain, mais de soutenir la relation avec un cadre clair et supervisé.";
-    }
-
-    if (text.includes("controle")) {
-      return "Oui, c’est un point essentiel.\n\nUne IA utile dans la relation client doit rester contrôlable : ton ton, tes limites, tes intentions, et ce qui doit être transmis à l’humain.";
-    }
-
-    return "C’est une réserve très saine.\n\nL’IA ne devrait pas rendre la relation plus froide. Elle devrait surtout enlever de la friction autour de ce qui peut être préparé, clarifié ou suivi.";
-  }
-
-  if (stepId === "human_boundary") {
-    return "Exactement.\n\nC’est cette limite qui compte : l’IA peut préparer, clarifier, qualifier ou maintenir le lien… mais la confiance, la nuance et les décisions importantes doivent rester humaines.";
-  }
-
-  return "Merci, c’est noté 🙂";
-}
-
 function buildSummary(tags: Tag[], answers: Record<string, string | string[]>) {
   const has = (tag: Tag) => tags.includes(tag);
   const business = answers.business_context;
@@ -441,7 +347,6 @@ async function getAiReaction({
   previousAnswers,
   remainingQuestions,
   followupAlreadyAsked,
-  fallbackReaction,
 }: {
   currentStepId: string;
   currentQuestion: string;
@@ -449,7 +354,6 @@ async function getAiReaction({
   previousAnswers: Record<string, string | string[]>;
   remainingQuestions: { id: string; question: string }[];
   followupAlreadyAsked: boolean;
-  fallbackReaction: string;
 }): Promise<AiReactionResponse> {
   try {
     const response = await fetch("/api/clarte-reaction", {
@@ -477,7 +381,7 @@ async function getAiReaction({
       reaction:
         typeof data.reaction === "string" && data.reaction.trim()
           ? data.reaction.trim()
-          : fallbackReaction,
+          : "Oui… je vois.",
       shouldAskFollowup: Boolean(data.shouldAskFollowup),
       followupQuestion:
         typeof data.followupQuestion === "string" && data.followupQuestion.trim()
@@ -488,7 +392,7 @@ async function getAiReaction({
     console.error("Erreur réaction IA :", error);
 
     return {
-      reaction: fallbackReaction,
+      reaction: "Oui… je vois.",
       shouldAskFollowup: false,
       followupQuestion: null,
     };
@@ -659,8 +563,6 @@ export default function Home() {
 
   const [introIndex, setIntroIndex] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
-  const [insightIndex, setInsightIndex] = useState(0);
-
   const [textAnswer, setTextAnswer] = useState("");
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
   const [questionReady, setQuestionReady] = useState(false);
@@ -814,7 +716,6 @@ export default function Home() {
 
       if (nextStep >= steps.length) {
         setPhase("insight");
-        setInsightIndex(0);
 
         const generatedSummary = await getAiSummary({
           answers,
@@ -838,18 +739,10 @@ export default function Home() {
     }
 
     if (message.action === "nextInsight") {
-      const nextIndex = insightIndex + 1;
-
-      if (nextIndex < insightMessages.length) {
-        setInsightIndex(nextIndex);
-        addAgent(insightMessages[nextIndex], "nextInsight");
-        return;
-      }
-
       setPhase("leadCapture");
       setTimeout(() => {
         addAgent(
-          "Je peux maintenant t’envoyer ta synthèse personnalisée 🙂\n\nElle reprend ce qui semble bloquer, ce qui pourrait devenir plus fluide, et la place que pourrait prendre une IA supervisée sans remplacer l’humain.\n\nOù puis-je te l’envoyer ? Pense à regarder tes mails ensuite."
+          "Je peux te l’envoyer par mail pour que tu puisses la relire tranquillement.\n\nOù puis-je te l’envoyer ? Pense à regarder tes mails ensuite 🙂"
         );
       }, 350);
     }
@@ -881,11 +774,6 @@ export default function Home() {
     setQuestionReady(false);
     setLoadingReaction(true);
 
-    const fallbackReaction = getReaction(
-      currentQuestion.id,
-      normalizedValue,
-      newTags
-    );
 
     const aiReaction = await getAiReaction({
       currentStepId: currentQuestion.id,
@@ -897,7 +785,6 @@ export default function Home() {
         question: step.question,
       })),
       followupAlreadyAsked,
-      fallbackReaction,
     });
 
     setLoadingReaction(false);
@@ -931,7 +818,7 @@ export default function Home() {
     }));
 
     addAgent(
-      "Oui… merci. C’est utile à garder en tête pour la suite.",
+      "Merci, je garde ça en tête.",
       "afterDynamicFollowup"
     );
   };
