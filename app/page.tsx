@@ -6,51 +6,33 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const GOOGLE_SHEET_WEBHOOK =
   "https://script.google.com/macros/s/AKfycbwS0JBCrdO4Fi7jkp04qbRTeVmruOpAZQW5jZQutSZ2vEm_-viyAR_C2vZmY9wiwClJPQ/exec";
 
+// ⚠️ Remets ici tes URLs si celle du webhook ci-dessus a été modifiée par erreur.
 const leadMagnetUrl = "https://leadmagnet-zid6.onrender.com/";
 const auraUrl = "https://aura-diagnostic.onrender.com/";
-const googleSheetDemoUrl = "https://script.google.com/macros/s/AKfycbwy_lJ3__qWOhLPP6GEoLvwRuPWzBDPBKCgvJi9pAFYs_TRmAt2_fYSiHdMo_BlfwKP/exec";
+const googleSheetDemoUrl =
+  "https://script.google.com/macros/s/AKfycbwy_lJ3__qWOhLPP6GEoLvwRuPWzBDPBKCgvJi9pAFYs_TRmAt2_fYSiHdMo_BlfwKP/exec";
 
-const introMessages = [
-  "👋 Hello, moi c’est Clarté 🤍",
-  "On va prendre quelques minutes pour regarder comment les bonnes personnes te découvrent, ce qui les aide à avancer, et ce qui repose encore trop sur toi aujourd’hui.",
-  "Pas de grand audit compliqué ici. Juste une discussion pour faire ressortir les points de friction, les opportunités de fluidité, et la place possible d’une IA supervisée dans ton parcours prospect.",
-];
+type StageId =
+  | "business_context"
+  | "discovery_channels"
+  | "engagement_channels"
+  | "human_load"
+  | "three_month_risk"
+  | "positive_projection"
+  | "ai_skepticism"
+  | "human_boundary";
 
-const introCards = [
-  "🧭 3 à 5 minutes maximum",
-  "💬 Une discussion, pas un formulaire",
-  "✨ Une synthèse personnalisée à la fin",
-];
-
-type Tag =
-  | "acquisition_instable"
-  | "conversion_faible"
-  | "prospects_non_qualifies"
-  | "manque_suivi"
-  | "dependance_humaine"
-  | "aucun_systeme"
-  | "maturite_lead_magnet"
-  | "interet_relais"
-  | "lead_chaud";
-
-type TextStep = {
-  id: string;
-  question: string;
-  type: "text";
-  placeholder: string;
-};
-
-type ChoiceStep = {
-  id: string;
-  question: string;
-  type: "choice";
-  multiple: boolean;
-  options: string[];
+type Stage = {
+  id: StageId;
+  label: string;
+  objective: string;
+  defaultQuestion: string;
+  inputType: "text" | "choice";
+  placeholder?: string;
+  choices?: string[];
   maxSelections?: number;
   helperText?: string;
 };
-
-type Step = TextStep | ChoiceStep;
 
 type ChatMessage = {
   id: string;
@@ -59,41 +41,54 @@ type ChatMessage = {
   typed?: boolean;
   action?:
     | "nextIntro"
-    | "showQuestionInputs"
-    | "afterReaction"
-    | "nextInsight"
-    | "askDynamicFollowup"
-    | "showDynamicFollowupInputs"
-    | "afterDynamicFollowup";
+    | "showStageInputs"
+    | "afterAnswer"
+    | "showClarificationInput"
+    | "afterClarification"
+    | "afterSummary"
+    | "leadPrompt";
 };
 
-type AiReactionResponse = {
-  reaction: string;
-  shouldAskFollowup: boolean;
-  followupQuestion: string | null;
+type ConversationResponse = {
+  message: string;
+  shouldClarify: boolean;
+  clarificationQuestion: string | null;
 };
 
-type AiSummaryResponse = {
-  summary: string;
-};
+const introMessages = [
+  "👋 Hello, moi c’est Clarté 🤍",
+  "On va prendre quelques minutes pour regarder comment tu attires tes clients aujourd’hui, et ce qui pourrait devenir plus simple à tenir.",
+  "Pas besoin de préparer quoi que ce soit. Réponds simplement avec tes mots.",
+];
 
-const steps: Step[] = [
+const introCards = [
+  "🧭 3 à 5 minutes maximum",
+  "💬 Une discussion, pas un formulaire",
+  "✨ Une synthèse personnalisée à la fin",
+];
+
+const stages: Stage[] = [
   {
     id: "business_context",
-    question: "Tu fais quoi exactement aujourd’hui, et pour qui ?",
-    type: "text",
+    label: "Activité",
+    objective:
+      "Comprendre précisément ce que fait la personne, qui elle accompagne, et le type de problème ou désir qu'elle adresse.",
+    defaultQuestion: "Tu fais quoi exactement aujourd’hui, et pour qui ?",
+    inputType: "text",
     placeholder:
-      "Ex : j’accompagne les indépendants à mieux vendre leur offre, je suis coach, consultante, thérapeute, formatrice…",
+      "Ex : j’aide les indépendants à vendre leur offre, j’accompagne les femmes à mieux comprendre leur énergie, je forme des équipes…",
   },
   {
     id: "discovery_channels",
-    question:
+    label: "Découverte",
+    objective:
+      "Comprendre par quels canaux les bonnes personnes découvrent l'activité aujourd'hui.",
+    defaultQuestion:
       "Aujourd’hui, les bonnes personnes te découvrent surtout comment ?",
-    type: "choice",
-    multiple: true,
+    inputType: "choice",
     maxSelections: 4,
     helperText: "Tu peux sélectionner plusieurs réponses.",
-    options: [
+    choices: [
       "Instagram",
       "LinkedIn",
       "Bouche-à-oreille",
@@ -106,13 +101,15 @@ const steps: Step[] = [
   },
   {
     id: "engagement_channels",
-    question:
+    label: "Lien",
+    objective:
+      "Comprendre comment la personne garde le lien avec les prospects déjà intéressés : emails, live, challenge, lead magnet, DM, appel, communauté ou rien de structuré.",
+    defaultQuestion:
       "Et comment gardes-tu le lien avec les personnes qui montrent de l’intérêt pour ce que tu proposes ?",
-    type: "choice",
-    multiple: true,
+    inputType: "choice",
     maxSelections: 4,
     helperText: "Choisis ce qui ressemble le plus à ton fonctionnement actuel.",
-    options: [
+    choices: [
       "Newsletter",
       "Emails",
       "Live",
@@ -128,13 +125,15 @@ const steps: Step[] = [
   },
   {
     id: "human_load",
-    question:
-      "Dans tout le parcours prospect, qu’est-ce qui repose encore beaucoup sur toi aujourd’hui ?",
-    type: "choice",
-    multiple: true,
+    label: "Charge",
+    objective:
+      "Identifier ce qui repose encore beaucoup sur la personne dans le parcours d'acquisition et de conversion.",
+    defaultQuestion:
+      "Dans tout ça, qu’est-ce qui repose encore beaucoup sur toi aujourd’hui ?",
+    inputType: "choice",
     maxSelections: 4,
     helperText: "Tu peux choisir les points les plus présents.",
-    options: [
+    choices: [
       "Répondre aux questions",
       "Expliquer mon offre",
       "Relancer les personnes intéressées",
@@ -148,21 +147,26 @@ const steps: Step[] = [
   },
   {
     id: "three_month_risk",
-    question:
+    label: "3 mois",
+    objective:
+      "Faire émerger la vision à trois mois si rien ne change, sans dramatiser ni faire peur.",
+    defaultQuestion:
       "À ce rythme-là, qu’est-ce qui pourrait devenir difficile à tenir dans les prochains mois ?",
-    type: "text",
+    inputType: "text",
     placeholder:
-      "Ex : continuer à relancer, garder un flux régulier, répondre à tout le monde, créer du contenu, ne pas perdre les personnes intéressées…",
+      "Ex : continuer à relancer, garder un flux régulier, répondre à tout le monde, ne pas perdre les personnes intéressées…",
   },
   {
     id: "positive_projection",
-    question:
+    label: "Projection",
+    objective:
+      "Créer une projection mentale positive : ce qui changerait si certaines étapes devenaient plus fluides.",
+    defaultQuestion:
       "Et si une partie de tout ça devenait plus fluide demain… qu’est-ce qui changerait le plus pour toi ?",
-    type: "choice",
-    multiple: true,
+    inputType: "choice",
     maxSelections: 4,
     helperText: "L’idée est de voir ce qui créerait le plus de soulagement.",
-    options: [
+    choices: [
       "Gagner du temps",
       "Avoir des prospects mieux préparés",
       "Ne plus devoir tout relancer moi-même",
@@ -175,13 +179,15 @@ const steps: Step[] = [
   },
   {
     id: "ai_skepticism",
-    question:
+    label: "Doutes IA",
+    objective:
+      "Faire exprimer les doutes ou réserves sur l'IA dans la relation client pour pouvoir rassurer ensuite.",
+    defaultQuestion:
       "Quand tu entends parler d’IA dans la relation client, qu’est-ce qui te rend le plus sceptique ou prudent aujourd’hui ?",
-    type: "choice",
-    multiple: true,
+    inputType: "choice",
     maxSelections: 3,
     helperText: "C’est important de garder ce point en tête.",
-    options: [
+    choices: [
       "Que ça fasse faux ou robotique",
       "Perdre le côté humain",
       "Des réponses trop impersonnelles",
@@ -193,13 +199,15 @@ const steps: Step[] = [
   },
   {
     id: "human_boundary",
-    question:
+    label: "Humain",
+    objective:
+      "Comprendre ce qui doit absolument rester humain dans la relation, pour positionner l'IA comme soutien supervisé.",
+    defaultQuestion:
       "Et dans toute cette relation, qu’est-ce qui doit absolument rester humain selon toi ?",
-    type: "choice",
-    multiple: true,
+    inputType: "choice",
     maxSelections: 4,
     helperText: "Ce sont les parties que l’IA ne devrait pas remplacer.",
-    options: [
+    choices: [
       "Les appels",
       "L’écoute émotionnelle",
       "Le closing",
@@ -212,238 +220,9 @@ const steps: Step[] = [
   },
 ];
 
-function normalizeText(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-function detectTags(stepId: string, value: string | string[]): Tag[] {
-  const text = normalizeText(Array.isArray(value) ? value.join(" ") : value);
-  const tags = new Set<Tag>();
-
-  if (
-    text.includes("instagram") ||
-    text.includes("linkedin") ||
-    text.includes("bouche") ||
-    text.includes("seo") ||
-    text.includes("google") ||
-    text.includes("publicite") ||
-    text.includes("contenu") ||
-    text.includes("prospection")
-  ) {
-    tags.add("acquisition_instable");
-  }
-
-  if (
-    text.includes("relancer") ||
-    text.includes("relance") ||
-    text.includes("suivi") ||
-    text.includes("garder le lien") ||
-    text.includes("dm") ||
-    text.includes("messages prives") ||
-    text.includes("rien de structure") ||
-    text.includes("perdre") ||
-    text.includes("perdent")
-  ) {
-    tags.add("manque_suivi");
-  }
-
-  if (
-    text.includes("qualifier") ||
-    text.includes("mieux comprendre") ||
-    text.includes("besoin") ||
-    text.includes("prospects mieux prepares") ||
-    text.includes("bonnes personnes")
-  ) {
-    tags.add("prospects_non_qualifies");
-  }
-
-  if (
-    text.includes("confiance") ||
-    text.includes("rassurer") ||
-    text.includes("achat") ||
-    text.includes("closing") ||
-    text.includes("passage a l'action") ||
-    text.includes("passer a l'action")
-  ) {
-    tags.add("conversion_faible");
-  }
-
-  if (
-    text.includes("repose") ||
-    text.includes("temps") ||
-    text.includes("energie") ||
-    text.includes("charge mentale") ||
-    text.includes("tout gerer") ||
-    text.includes("manuellement") ||
-    text.includes("moi-meme") ||
-    text.includes("au feeling") ||
-    text.includes("regulierement")
-  ) {
-    tags.add("dependance_humaine");
-  }
-
-  if (
-    text.includes("rien de structure") ||
-    text.includes("au feeling") ||
-    text.includes("pas vraiment") ||
-    text.includes("je ne sais pas")
-  ) {
-    tags.add("aucun_systeme");
-  }
-
-  if (
-    text.includes("lead magnet") ||
-    text.includes("challenge") ||
-    text.includes("live") ||
-    text.includes("newsletter") ||
-    text.includes("emails") ||
-    text.includes("experience interactive") ||
-    text.includes("communaute")
-  ) {
-    tags.add("maturite_lead_magnet");
-  }
-
-  if (stepId === "positive_projection") {
-    tags.add("interet_relais");
-  }
-
-  return Array.from(tags);
-}
-
-function buildSummary(tags: Tag[], answers: Record<string, string | string[]>) {
-  const has = (tag: Tag) => tags.includes(tag);
-  const business = answers.business_context;
-  const businessIntro =
-    typeof business === "string" && business.trim()
-      ? `Tu m’as expliqué ceci sur ton activité : ${business.trim()}`
-      : "Ton activité semble dépendre d’une relation de confiance avec les bonnes personnes";
-
-  if (has("dependance_humaine") && has("manque_suivi")) {
-    return `${businessIntro}. Ce que je retiens surtout : une partie importante du parcours prospect semble encore reposer sur ta disponibilité personnelle, notamment pour expliquer, rassurer, relancer ou maintenir le lien.`;
-  }
-
-  if (has("prospects_non_qualifies") || has("conversion_faible")) {
-    return `${businessIntro}. Ce que je retiens surtout : le sujet n’est pas seulement d’attirer plus de monde, mais d’aider les bonnes personnes à se clarifier, à comprendre la valeur de ton offre et à arriver plus prêtes à la suite.`;
-  }
-
-  if (has("aucun_systeme")) {
-    return `${businessIntro}. Ce que je retiens surtout : il y a probablement un espace à structurer entre l’intérêt initial et le passage à l’action, pour éviter que les personnes intéressées disparaissent ou refroidissent.`;
-  }
-
-  if (has("maturite_lead_magnet")) {
-    return `${businessIntro}. Ce que je retiens surtout : tu as déjà des points de relais avec tes prospects. Le prochain niveau serait de les rendre plus personnalisés, plus qualifiants et plus utiles pour préparer la relation humaine.`;
-  }
-
-  return `${businessIntro}. Ce que je retiens surtout : il existe un espace intéressant entre visibilité, intérêt, confiance et passage à l’action. C’est précisément cet espace qu’une expérience IA supervisée peut aider à fluidifier.`;
-}
-
-async function getAiReaction({
-  currentStepId,
-  currentQuestion,
-  userAnswer,
-  previousAnswers,
-  remainingQuestions,
-  followupAlreadyAsked,
-}: {
-  currentStepId: string;
-  currentQuestion: string;
-  userAnswer: string | string[];
-  previousAnswers: Record<string, string | string[]>;
-  remainingQuestions: { id: string; question: string }[];
-  followupAlreadyAsked: boolean;
-}): Promise<AiReactionResponse> {
-  try {
-    const response = await fetch("/api/clarte-reaction", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        currentStepId,
-        currentQuestion,
-        userAnswer,
-        previousAnswers,
-        remainingQuestions,
-        followupAlreadyAsked,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Erreur API Clarté reaction");
-    }
-
-    const data = (await response.json()) as Partial<AiReactionResponse>;
-
-    return {
-      reaction:
-        typeof data.reaction === "string" && data.reaction.trim()
-          ? data.reaction.trim()
-          : "Oui… je vois.",
-      shouldAskFollowup: Boolean(data.shouldAskFollowup),
-      followupQuestion:
-        typeof data.followupQuestion === "string" && data.followupQuestion.trim()
-          ? data.followupQuestion.trim()
-          : null,
-    };
-  } catch (error) {
-    console.error("Erreur réaction IA :", error);
-
-    return {
-      reaction: "Oui… je vois.",
-      shouldAskFollowup: false,
-      followupQuestion: null,
-    };
-  }
-}
-
-async function getAiSummary({
-  answers,
-  tags,
-  score,
-  leadTemperature,
-  fallbackSummary,
-}: {
-  answers: Record<string, string | string[]>;
-  tags: Tag[];
-  score: number;
-  leadTemperature: string;
-  fallbackSummary: string;
-}): Promise<string> {
-  try {
-    const response = await fetch("/api/clarte-summary", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        answers,
-        tags,
-        score,
-        leadTemperature,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Erreur API Clarté summary");
-    }
-
-    const data = (await response.json()) as Partial<AiSummaryResponse>;
-
-    return typeof data.summary === "string" && data.summary.trim()
-      ? data.summary.trim()
-      : fallbackSummary;
-  } catch (error) {
-    console.error("Erreur synthèse IA :", error);
-    return fallbackSummary;
-  }
-}
-
 function Typewriter({
   text,
-  speed = 16,
+  speed = 14,
   onDone,
 }: {
   text: string;
@@ -459,18 +238,16 @@ function Typewriter({
 
   useEffect(() => {
     setDisplayedText("");
-
     let index = 0;
     let completed = false;
 
     const interval = setInterval(() => {
       setDisplayedText(text.slice(0, index + 1));
       index++;
-
       if (index >= text.length && !completed) {
         completed = true;
         clearInterval(interval);
-        setTimeout(() => onDoneRef.current?.(), 300);
+        setTimeout(() => onDoneRef.current?.(), 250);
       }
     }, speed);
 
@@ -494,7 +271,6 @@ function AgentBubble({
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EAE3F7] text-sm sm:h-10 sm:w-10">
         🤖
       </div>
-
       <div className="max-w-[85%] whitespace-pre-line rounded-2xl bg-[#F7F3ED] px-4 py-3 text-sm leading-6 shadow-sm sm:max-w-xl sm:px-6 sm:py-5 sm:text-base sm:leading-7">
         {typed ? <Typewriter text={text} onDone={onDone} /> : text}
       </div>
@@ -525,11 +301,7 @@ function StaggeredChoiceButton({
 
   useEffect(() => {
     setVisible(false);
-
-    const timeout = setTimeout(() => {
-      setVisible(true);
-    }, 80 * index);
-
+    const timeout = setTimeout(() => setVisible(true), 70 * index);
     return () => clearTimeout(timeout);
   }, [index, option]);
 
@@ -553,65 +325,73 @@ function StaggeredChoiceButton({
   );
 }
 
+async function callConversationApi(payload: Record<string, unknown>) {
+  const response = await fetch("/api/clarte-conversation", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error("Erreur API Clarté conversation");
+  }
+
+  return (await response.json()) as ConversationResponse;
+}
+
+function toVisibleAnswer(value: string | string[]) {
+  return Array.isArray(value) ? value.join(", ") : value;
+}
+
 export default function Home() {
   const [started, setStarted] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-
   const [phase, setPhase] = useState<
-    "intro" | "diagnostic" | "insight" | "leadCapture" | "finalPage"
+    "intro" | "diagnostic" | "leadCapture" | "finalPage"
   >("intro");
-
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [introIndex, setIntroIndex] = useState(0);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStageIndex, setCurrentStageIndex] = useState(0);
+  const [questionReady, setQuestionReady] = useState(false);
+  const [awaitingClarification, setAwaitingClarification] = useState(false);
+  const [clarificationQuestion, setClarificationQuestion] = useState("");
+  const [clarificationAnswer, setClarificationAnswer] = useState("");
   const [textAnswer, setTextAnswer] = useState("");
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
-  const [questionReady, setQuestionReady] = useState(false);
-
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
-  const [tags, setTags] = useState<Tag[]>([]);
-
+  const [loading, setLoading] = useState(false);
+  const [totalClarifications, setTotalClarifications] = useState(0);
+  const [summary, setSummary] = useState("");
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
 
-  const [followupAlreadyAsked, setFollowupAlreadyAsked] = useState(false);
-  const [dynamicQuestion, setDynamicQuestion] = useState("");
-  const [dynamicAnswer, setDynamicAnswer] = useState("");
-  const [aiSummary, setAiSummary] = useState("");
-  const [loadingReaction, setLoadingReaction] = useState(false);
-
   const conversationBottomRef = useRef<HTMLDivElement | null>(null);
-  const currentQuestion = steps[currentStep];
-
+  const currentStage = stages[currentStageIndex];
   const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const leadIsValid = firstName.trim().length > 0 && emailIsValid;
 
-  const score = useMemo(() => {
-    let total = 35;
-    if (tags.includes("interet_relais")) total += 20;
-    if (tags.includes("dependance_humaine")) total += 12;
-    if (tags.includes("manque_suivi")) total += 10;
-    if (tags.includes("conversion_faible")) total += 10;
-    if (tags.includes("prospects_non_qualifies")) total += 8;
-    if (tags.includes("aucun_systeme")) total += 5;
-    return Math.min(total, 100);
-  }, [tags]);
+  const progress = useMemo(
+    () => Math.min(100, Math.round(((currentStageIndex + 1) / stages.length) * 100)),
+    [currentStageIndex]
+  );
 
-  const leadTemperature = useMemo(() => {
-    if (score >= 75) return "Chaud";
-    if (score >= 55) return "Tiède";
-    return "Découverte";
-  }, [score]);
-
-  const summary = useMemo(() => buildSummary(tags, answers), [tags, answers]);
-  const displayedSummary = aiSummary || summary;
+  const conversationForApi = useMemo(
+    () =>
+      messages
+        .filter((message) => message.role === "agent" || message.role === "user")
+        .map((message) => ({
+          role: message.role as "agent" | "user",
+          text: message.text,
+        })),
+    [messages]
+  );
 
   useEffect(() => {
     conversationBottomRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "end",
     });
-  }, [messages, phase, textAnswer, selectedChoices, questionReady, dynamicAnswer, loadingReaction]);
+  }, [messages, questionReady, textAnswer, selectedChoices, loading, clarificationAnswer]);
 
   const addAgent = (text: string, action?: ChatMessage["action"]) => {
     setMessages((prev) => [
@@ -648,6 +428,130 @@ export default function Home() {
     ]);
   };
 
+  const getRemainingStages = (fromIndex: number) =>
+    stages.slice(fromIndex + 1).map((stage) => ({
+      id: stage.id,
+      label: stage.label,
+      objective: stage.objective,
+    }));
+
+  const askStageQuestion = async (stageIndex: number) => {
+    const stage = stages[stageIndex];
+    setLoading(true);
+    setQuestionReady(false);
+    setAwaitingClarification(false);
+    setClarificationQuestion("");
+    setClarificationAnswer("");
+    setTextAnswer("");
+    setSelectedChoices([]);
+
+    try {
+      const data = await callConversationApi({
+        mode: "ask_question",
+        currentStage: stage,
+        currentStageIndex: stageIndex,
+        totalStages: stages.length,
+        answers,
+        conversation: conversationForApi,
+        remainingStages: getRemainingStages(stageIndex),
+        totalClarifications,
+      });
+
+      addAgent(data.message || stage.defaultQuestion, "showStageInputs");
+    } catch (error) {
+      console.error(error);
+      addAgent(stage.defaultQuestion, "showStageInputs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateSummary = async (nextAnswers: Record<string, string | string[]>) => {
+    setLoading(true);
+    setQuestionReady(false);
+
+    try {
+      const data = await callConversationApi({
+        mode: "summary",
+        answers: nextAnswers,
+        conversation: conversationForApi,
+        totalClarifications,
+      });
+
+      const generatedSummary = data.message;
+      setSummary(generatedSummary);
+      addAgent(generatedSummary, "afterSummary");
+    } catch (error) {
+      console.error(error);
+      const fallbackSummary =
+        "Ce que je retiens : il y a déjà une forme d’intérêt autour de ton activité, mais certaines étapes semblent encore beaucoup dépendre de toi. L’enjeu serait de rendre le passage entre curiosité, confiance et action plus simple à suivre, sans enlever la partie humaine de ta relation.";
+      setSummary(fallbackSummary);
+      addAgent(fallbackSummary, "afterSummary");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const moveToNextStage = (nextAnswers: Record<string, string | string[]>) => {
+    const nextIndex = currentStageIndex + 1;
+
+    if (nextIndex >= stages.length) {
+      generateSummary(nextAnswers);
+      return;
+    }
+
+    setCurrentStageIndex(nextIndex);
+    setTimeout(() => askStageQuestion(nextIndex), 250);
+  };
+
+  const handleMessageDone = (message: ChatMessage) => {
+    if (message.action === "nextIntro") {
+      const nextIndex = introIndex + 1;
+
+      if (nextIndex < introMessages.length) {
+        setIntroIndex(nextIndex);
+        addAgent(introMessages[nextIndex], "nextIntro");
+        return;
+      }
+
+      introCards.forEach((benefit, index) => {
+        setTimeout(() => addCard(benefit), 250 + index * 300);
+      });
+
+      setTimeout(() => askStageQuestion(0), 250 + introCards.length * 300 + 350);
+      return;
+    }
+
+    if (message.action === "showStageInputs") {
+      setQuestionReady(true);
+      return;
+    }
+
+    if (message.action === "showClarificationInput") {
+      setQuestionReady(true);
+      return;
+    }
+
+    if (message.action === "afterAnswer" || message.action === "afterClarification") {
+      moveToNextStage(answers);
+      return;
+    }
+
+    if (message.action === "afterSummary") {
+      setTimeout(() => {
+        addAgent(
+          "Je peux te l’envoyer par mail pour que tu puisses la relire tranquillement. Où puis-je te l’envoyer ? Pense à regarder tes mails ensuite 🙂",
+          "leadPrompt"
+        );
+      }, 300);
+      return;
+    }
+
+    if (message.action === "leadPrompt") {
+      setPhase("leadCapture");
+    }
+  };
+
   const startConversation = () => {
     setStarted(true);
     setPhase("intro");
@@ -663,182 +567,97 @@ export default function Home() {
     ]);
   };
 
-  const showFirstQuestion = () => {
-    setPhase("diagnostic");
-    setCurrentStep(0);
-    setQuestionReady(false);
-    addAgent(steps[0].question, "showQuestionInputs");
-  };
-
-  const handleMessageDone = async (message: ChatMessage) => {
-    if (message.action === "nextIntro") {
-      const nextIndex = introIndex + 1;
-
-      if (nextIndex < introMessages.length) {
-        setIntroIndex(nextIndex);
-        addAgent(introMessages[nextIndex], "nextIntro");
-        return;
-      }
-
-      introCards.forEach((benefit, index) => {
-        setTimeout(() => addCard(benefit), 250 + index * 350);
-      });
-
-      setTimeout(showFirstQuestion, 250 + introCards.length * 350 + 400);
-      return;
-    }
-
-    if (message.action === "showQuestionInputs") {
-      setQuestionReady(true);
-      return;
-    }
-
-    if (message.action === "askDynamicFollowup") {
-      addAgent(dynamicQuestion, "showDynamicFollowupInputs");
-      return;
-    }
-
-    if (message.action === "showDynamicFollowupInputs") {
-      setQuestionReady(true);
-      return;
-    }
-
-    if (message.action === "afterDynamicFollowup") {
-      setDynamicQuestion("");
-      setDynamicAnswer("");
-    }
-
-    if (
-      message.action === "afterReaction" ||
-      message.action === "afterDynamicFollowup"
-    ) {
-      const nextStep = currentStep + 1;
-
-      if (nextStep >= steps.length) {
-        setPhase("insight");
-
-        const generatedSummary = await getAiSummary({
-          answers,
-          tags,
-          score,
-          leadTemperature,
-          fallbackSummary: summary,
-        });
-
-        setAiSummary(generatedSummary);
-        addAgent(generatedSummary, "nextInsight");
-        return;
-      }
-
-      setCurrentStep(nextStep);
-      setTextAnswer("");
-      setSelectedChoices([]);
-      setQuestionReady(false);
-      addAgent(steps[nextStep].question, "showQuestionInputs");
-      return;
-    }
-
-    if (message.action === "nextInsight") {
-      setPhase("leadCapture");
-      setTimeout(() => {
-        addAgent(
-          "Je peux te l’envoyer par mail pour que tu puisses la relire tranquillement.\n\nOù puis-je te l’envoyer ? Pense à regarder tes mails ensuite 🙂"
-        );
-      }, 350);
-    }
-  };
-
-  const submitStepAnswer = async (value: string | string[]) => {
-    const normalizedValue = Array.isArray(value)
-      ? value.filter(Boolean)
-      : value.trim();
+  const submitStageAnswer = async (value: string | string[]) => {
+    const normalizedValue = Array.isArray(value) ? value.filter(Boolean) : value.trim();
 
     if (Array.isArray(normalizedValue) && normalizedValue.length === 0) return;
     if (!Array.isArray(normalizedValue) && !normalizedValue) return;
 
-    const visibleAnswer = Array.isArray(normalizedValue)
-      ? normalizedValue.join(", ")
-      : normalizedValue;
-
-    const newStepTags = detectTags(currentQuestion.id, normalizedValue);
-    const newTags = Array.from(new Set([...tags, ...newStepTags]));
-    const nextAnswers = {
-      ...answers,
-      [currentQuestion.id]: normalizedValue,
-    };
+    const visibleAnswer = toVisibleAnswer(normalizedValue);
+    const nextAnswers = { ...answers, [currentStage.id]: normalizedValue };
 
     setAnswers(nextAnswers);
-    setTags(newTags);
-
     addUser(visibleAnswer);
     setQuestionReady(false);
-    setLoadingReaction(true);
+    setLoading(true);
 
+    try {
+      const data = await callConversationApi({
+        mode: "after_answer",
+        currentStage,
+        currentStageIndex,
+        totalStages: stages.length,
+        userAnswer: normalizedValue,
+        answers: nextAnswers,
+        conversation: conversationForApi,
+        remainingStages: getRemainingStages(currentStageIndex),
+        totalClarifications,
+      });
 
-    const aiReaction = await getAiReaction({
-      currentStepId: currentQuestion.id,
-      currentQuestion: currentQuestion.question,
-      userAnswer: normalizedValue,
-      previousAnswers: nextAnswers,
-      remainingQuestions: steps.slice(currentStep + 1).map((step) => ({
-        id: step.id,
-        question: step.question,
-      })),
-      followupAlreadyAsked,
-    });
-
-    setLoadingReaction(false);
-
-    if (
-      aiReaction.shouldAskFollowup &&
-      aiReaction.followupQuestion &&
-      !followupAlreadyAsked
-    ) {
-      setDynamicQuestion(aiReaction.followupQuestion);
-      setFollowupAlreadyAsked(true);
-      addAgent(aiReaction.reaction, "askDynamicFollowup");
-    } else {
-      addAgent(aiReaction.reaction, "afterReaction");
+      if (data.shouldClarify && data.clarificationQuestion && totalClarifications < 2) {
+        setAwaitingClarification(true);
+        setClarificationQuestion(data.clarificationQuestion);
+        setTotalClarifications((prev) => prev + 1);
+        addAgent(`${data.message}\n\n${data.clarificationQuestion}`, "showClarificationInput");
+      } else {
+        addAgent(data.message, "afterAnswer");
+      }
+    } catch (error) {
+      console.error(error);
+      addAgent("Oui… je vois.", "afterAnswer");
+    } finally {
+      setLoading(false);
+      setTextAnswer("");
+      setSelectedChoices([]);
     }
-
-    setTextAnswer("");
-    setSelectedChoices([]);
   };
 
-  const submitDynamicFollowupAnswer = () => {
-    const answer = dynamicAnswer.trim();
+  const submitClarification = async () => {
+    const answer = clarificationAnswer.trim();
     if (!answer) return;
 
+    const key = `${currentStage.id}_precision`;
+    const nextAnswers = { ...answers, [key]: answer };
+    setAnswers(nextAnswers);
     addUser(answer);
     setQuestionReady(false);
+    setLoading(true);
 
-    setAnswers((prev) => ({
-      ...prev,
-      [`followup_${currentQuestion.id}`]: answer,
-    }));
+    try {
+      const data = await callConversationApi({
+        mode: "after_clarification",
+        currentStage,
+        currentStageIndex,
+        totalStages: stages.length,
+        clarificationAnswer: answer,
+        answers: nextAnswers,
+        conversation: conversationForApi,
+        remainingStages: getRemainingStages(currentStageIndex),
+        totalClarifications,
+      });
 
-    addAgent(
-      "Merci, je garde ça en tête.",
-      "afterDynamicFollowup"
-    );
+      setAwaitingClarification(false);
+      setClarificationQuestion("");
+      setClarificationAnswer("");
+      addAgent(data.message, "afterClarification");
+    } catch (error) {
+      console.error(error);
+      setAwaitingClarification(false);
+      addAgent("Ok, c’est plus clair.", "afterClarification");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleChoice = (option: string) => {
-    if (currentQuestion.type !== "choice") return;
-
-    if (!currentQuestion.multiple) {
-      submitStepAnswer(option);
-      return;
-    }
+    if (currentStage.inputType !== "choice") return;
 
     setSelectedChoices((prev) => {
-      if (prev.includes(option)) {
-        return prev.filter((item) => item !== option);
-      }
+      if (prev.includes(option)) return prev.filter((item) => item !== option);
 
       if (
-        typeof currentQuestion.maxSelections === "number" &&
-        prev.length >= currentQuestion.maxSelections
+        typeof currentStage.maxSelections === "number" &&
+        prev.length >= currentStage.maxSelections
       ) {
         return prev;
       }
@@ -857,40 +676,11 @@ export default function Home() {
       firstName,
       email,
       answers,
-      tags,
-      score,
-      temperature: leadTemperature,
-      statut:
-        leadTemperature === "Chaud"
-          ? "Prospect chaud"
-          : leadTemperature === "Tiède"
-          ? "Prospect tiède"
-          : "Prospect découverte",
-      summary: displayedSummary,
-      business: answers.business_context ?? "",
-      discoveryChannels: Array.isArray(answers.discovery_channels)
-        ? answers.discovery_channels.join(", ")
-        : answers.discovery_channels ?? "",
-      engagementChannels: Array.isArray(answers.engagement_channels)
-        ? answers.engagement_channels.join(", ")
-        : answers.engagement_channels ?? "",
-      humanLoad: Array.isArray(answers.human_load)
-        ? answers.human_load.join(", ")
-        : answers.human_load ?? "",
-      threeMonthRisk: answers.three_month_risk ?? "",
-      positiveProjection: Array.isArray(answers.positive_projection)
-        ? answers.positive_projection.join(", ")
-        : answers.positive_projection ?? "",
-      aiSkepticism: Array.isArray(answers.ai_skepticism)
-        ? answers.ai_skepticism.join(", ")
-        : answers.ai_skepticism ?? "",
-      humanBoundary: Array.isArray(answers.human_boundary)
-        ? answers.human_boundary.join(", ")
-        : answers.human_boundary ?? "",
+      summary,
+      source: "Clarté acquisition OpenAI semi-guidé",
     };
 
     localStorage.setItem("diag-clarte-lead", JSON.stringify(payload));
-    console.log("Lead V2 :", payload);
 
     try {
       await fetch(GOOGLE_SHEET_WEBHOOK, {
@@ -924,9 +714,7 @@ export default function Home() {
           </h1>
 
           <p className="mt-6 text-sm leading-6 text-[#25255A]/75">
-            Une courte expérience conversationnelle pour voir comment les bonnes
-            personnes te découvrent, ce qui les aide à avancer, et ce qui
-            pourrait devenir plus fluide dans ton acquisition.
+            Une courte expérience conversationnelle pour voir ce qui pourrait devenir plus clair, plus fluide et plus léger dans ton acquisition.
           </p>
 
           <button
@@ -941,7 +729,6 @@ export default function Home() {
 
             <div className="relative mx-auto flex h-36 w-36 items-center justify-center sm:h-52 sm:w-52">
               <div className="absolute inset-0 rounded-full bg-[#9C93D8]/30 blur-2xl transition group-hover:bg-[#8E63E8]/40" />
-
               <Image
                 src="/robot.png"
                 alt="Mini agent Diag Clarté"
@@ -954,8 +741,7 @@ export default function Home() {
           </button>
 
           <div className="mt-8 rounded-2xl border border-[#E5DDD0] bg-white/70 p-4 text-center text-xs text-[#25255A]/70">
-            🛡️ Tes réponses restent confidentielles et servent uniquement à
-            personnaliser l’expérience.
+            🛡️ Tes réponses restent confidentielles et servent uniquement à personnaliser l’expérience.
           </div>
         </section>
       </main>
@@ -963,7 +749,7 @@ export default function Home() {
   }
 
   if (phase === "finalPage") {
-    const showAura = tags.includes("dependance_humaine") || score >= 65;
+    const showAura = true;
 
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#F2EFE8] p-4 pb-[env(safe-area-inset-bottom)] text-[#25255A] sm:p-6">
@@ -972,23 +758,11 @@ export default function Home() {
             ✨
           </div>
 
-          <h1 className="font-serif text-3xl sm:text-4xl">
-            Merci {firstName} 🤍
-          </h1>
+          <h1 className="font-serif text-3xl sm:text-4xl">Merci {firstName} 🤍</h1>
 
           <div className="mt-6 rounded-2xl border border-[#E5DDD0] bg-white px-5 py-5 text-left sm:px-6">
             <p className="font-semibold">Ce que Clarté a repéré :</p>
-            <p className="mt-2 text-sm leading-6 text-[#25255A]/70">{displayedSummary}</p>
-          </div>
-
-          <div className="mt-8 rounded-2xl border border-[#E5DDD0] bg-white px-5 py-5 text-left sm:px-6">
-            <p className="font-semibold">
-              Maintenant, tu peux visualiser comment ce type d’expérience peut fonctionner :
-            </p>
-
-            <p className="mt-2 text-sm leading-6 text-[#25255A]/70">
-              une expérience côté prospect, puis les informations utiles récupérées côté entreprise.
-            </p>
+            <p className="mt-2 text-sm leading-6 text-[#25255A]/70">{summary}</p>
           </div>
 
           <div className="mt-8 space-y-4">
@@ -997,7 +771,7 @@ export default function Home() {
               target="_blank"
               className="block w-full rounded-2xl bg-[#8E63E8] px-5 py-4 text-center font-semibold text-white transition hover:scale-[1.01] sm:px-6"
             >
-              Voir l’expérience côté prospect →
+              Voir une expérience côté prospect →
             </a>
 
             <a
@@ -1011,16 +785,10 @@ export default function Home() {
 
           {showAura && (
             <div className="mt-8 rounded-2xl border border-[#E5DDD0] bg-[#FFF8EF] px-5 py-5 text-center sm:px-6">
-              <p className="font-serif text-2xl text-[#25255A]">
-                Tu veux aller plus loin ?
-              </p>
-
+              <p className="font-serif text-2xl text-[#25255A]">Tu veux aller plus loin ?</p>
               <p className="mt-2 text-sm leading-6 text-[#25255A]/70">
-                Ce que tu as partagé laisse penser que le sujet dépasse peut-être
-                une simple expérience d’entrée : suivi, qualification, charge
-                mentale, continuité relationnelle… AURA™ peut t’aider à regarder ça plus en profondeur.
+                Si tu veux visualiser comment un agent IA supervisé pourrait s’adapter à ton activité, tu peux découvrir AURA™.
               </p>
-
               <a
                 href={auraUrl}
                 target="_blank"
@@ -1035,24 +803,18 @@ export default function Home() {
     );
   }
 
-  const currentIsDynamic =
-    phase === "diagnostic" && questionReady && dynamicQuestion.length > 0;
-
+  const currentIsClarification =
+    phase === "diagnostic" && questionReady && awaitingClarification;
   const currentIsText =
     phase === "diagnostic" &&
     questionReady &&
-    !dynamicQuestion &&
-    currentQuestion.type === "text";
-
+    !awaitingClarification &&
+    currentStage.inputType === "text";
   const currentIsChoice =
     phase === "diagnostic" &&
     questionReady &&
-    !dynamicQuestion &&
-    currentQuestion.type === "choice";
-
-  const progress = started
-    ? Math.min(100, Math.round(((currentStep + 1) / steps.length) * 100))
-    : 0;
+    !awaitingClarification &&
+    currentStage.inputType === "choice";
 
   return (
     <main className="min-h-screen bg-[#F2EFE8] p-4 pb-[env(safe-area-inset-bottom)] text-[#25255A] sm:p-6">
@@ -1069,17 +831,12 @@ export default function Home() {
                 style={{ left: `calc(${progress}% - 8px)` }}
               />
             </div>
-
-            <p className="mt-4 text-xs font-semibold">
-              Expérience conversationnelle Clarté
-            </p>
+            <p className="mt-4 text-xs font-semibold">Expérience conversationnelle Clarté</p>
           </div>
 
           <div className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5">
             {messages.map((message) => {
-              if (message.role === "user") {
-                return <UserBubble key={message.id} text={message.text} />;
-              }
+              if (message.role === "user") return <UserBubble key={message.id} text={message.text} />;
 
               if (message.role === "card") {
                 return (
@@ -1102,26 +859,25 @@ export default function Home() {
               );
             })}
 
-            {loadingReaction && (
+            {loading && (
               <div className="ml-11 max-w-[220px] rounded-2xl bg-[#F7F3ED] px-4 py-3 text-sm leading-6 text-[#25255A]/60 sm:ml-14">
                 Clarté prend une seconde…
               </div>
             )}
 
-            {currentIsDynamic && (
+            {currentIsClarification && (
               <div className="scroll-mt-32 space-y-4">
                 <textarea
-                  value={dynamicAnswer}
-                  onChange={(e) => setDynamicAnswer(e.target.value)}
+                  value={clarificationAnswer}
+                  onChange={(e) => setClarificationAnswer(e.target.value)}
                   placeholder="Réponds simplement, avec tes mots…"
                   className="min-h-[120px] w-full rounded-2xl border border-[#E5DDD0] bg-white px-4 py-3 outline-none transition focus:border-[#8E63E8] sm:min-h-[150px] sm:px-5 sm:py-4"
                 />
-
                 <button
-                  onClick={submitDynamicFollowupAnswer}
-                  disabled={!dynamicAnswer.trim()}
+                  onClick={submitClarification}
+                  disabled={!clarificationAnswer.trim()}
                   className={`w-full rounded-2xl px-5 py-4 font-semibold text-white transition sm:px-6 ${
-                    dynamicAnswer.trim()
+                    clarificationAnswer.trim()
                       ? "bg-[#8E63E8] hover:scale-[1.01]"
                       : "cursor-not-allowed bg-[#BEB8B0]"
                   }`}
@@ -1136,12 +892,11 @@ export default function Home() {
                 <textarea
                   value={textAnswer}
                   onChange={(e) => setTextAnswer(e.target.value)}
-                  placeholder={currentQuestion.placeholder}
+                  placeholder={currentStage.placeholder}
                   className="min-h-[120px] w-full rounded-2xl border border-[#E5DDD0] bg-white px-4 py-3 outline-none transition focus:border-[#8E63E8] sm:min-h-[160px] sm:px-5 sm:py-4"
                 />
-
                 <button
-                  onClick={() => submitStepAnswer(textAnswer)}
+                  onClick={() => submitStageAnswer(textAnswer)}
                   disabled={!textAnswer.trim()}
                   className={`w-full rounded-2xl px-5 py-4 font-semibold text-white transition sm:px-6 ${
                     textAnswer.trim()
@@ -1156,45 +911,38 @@ export default function Home() {
 
             {currentIsChoice && (
               <div className="scroll-mt-32 space-y-4">
-                {currentQuestion.type === "choice" &&
-                  currentQuestion.helperText && (
-                    <p className="text-center text-xs font-medium text-[#25255A]/60">
-                      {currentQuestion.helperText}
-                      {typeof currentQuestion.maxSelections === "number" &&
-                        selectedChoices.length > 0 &&
-                        ` (${selectedChoices.length}/${currentQuestion.maxSelections})`}
-                    </p>
-                  )}
+                {currentStage.helperText && (
+                  <p className="text-center text-xs font-medium text-[#25255A]/60">
+                    {currentStage.helperText}
+                    {typeof currentStage.maxSelections === "number" &&
+                      selectedChoices.length > 0 &&
+                      ` (${selectedChoices.length}/${currentStage.maxSelections})`}
+                  </p>
+                )}
 
                 <div className="flex flex-col gap-3">
-                  {currentQuestion.options.map((option, index) => {
-                    const selected = selectedChoices.includes(option);
-
-                    return (
-                      <StaggeredChoiceButton
-                        key={option}
-                        option={option}
-                        index={index}
-                        selected={selected}
-                        onClick={() => toggleChoice(option)}
-                      />
-                    );
-                  })}
+                  {(currentStage.choices ?? []).map((option, index) => (
+                    <StaggeredChoiceButton
+                      key={option}
+                      option={option}
+                      index={index}
+                      selected={selectedChoices.includes(option)}
+                      onClick={() => toggleChoice(option)}
+                    />
+                  ))}
                 </div>
 
-                {currentQuestion.multiple && (
-                  <button
-                    onClick={() => submitStepAnswer(selectedChoices)}
-                    disabled={selectedChoices.length === 0}
-                    className={`w-full rounded-2xl px-5 py-4 font-semibold text-white transition sm:px-6 ${
-                      selectedChoices.length > 0
-                        ? "bg-[#8E63E8] hover:scale-[1.01]"
-                        : "cursor-not-allowed bg-[#BEB8B0]"
-                    }`}
-                  >
-                    Continuer →
-                  </button>
-                )}
+                <button
+                  onClick={() => submitStageAnswer(selectedChoices)}
+                  disabled={selectedChoices.length === 0}
+                  className={`w-full rounded-2xl px-5 py-4 font-semibold text-white transition sm:px-6 ${
+                    selectedChoices.length > 0
+                      ? "bg-[#8E63E8] hover:scale-[1.01]"
+                      : "cursor-not-allowed bg-[#BEB8B0]"
+                  }`}
+                >
+                  Continuer →
+                </button>
               </div>
             )}
 
@@ -1206,7 +954,6 @@ export default function Home() {
                   placeholder="Ton prénom"
                   className="w-full rounded-2xl border border-[#E5DDD0] bg-white px-4 py-3 outline-none transition focus:border-[#8E63E8] sm:px-5 sm:py-4"
                 />
-
                 <input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -1214,7 +961,6 @@ export default function Home() {
                   type="email"
                   className="w-full rounded-2xl border border-[#E5DDD0] bg-white px-4 py-3 outline-none transition focus:border-[#8E63E8] sm:px-5 sm:py-4"
                 />
-
                 <button
                   onClick={submitLead}
                   disabled={!leadIsValid || sending}
@@ -1235,30 +981,26 @@ export default function Home() {
 
         <aside className="rounded-[2rem] border border-[#E5DDD0] bg-[#FFF8EF] p-5 shadow-sm sm:p-8">
           <h2 className="font-serif text-2xl">Ce que tu vas vivre</h2>
-
           <div className="mt-6 space-y-4 sm:mt-8">
             <div className="rounded-2xl border border-[#E5DDD0] bg-white/70 p-4 sm:p-5">
               <p className="font-semibold">Une vraie conversation</p>
               <p className="mt-2 text-xs leading-5 text-[#25255A]/65">
-                Clarté avance avec tes réponses pour comprendre ton activité, pas pour remplir un formulaire.
+                Clarté peut demander une précision si ta réponse est trop vague.
               </p>
             </div>
-
             <div className="rounded-2xl border border-[#E5DDD0] bg-white/70 p-4 sm:p-5">
               <p className="font-semibold">Une vraie prise de recul</p>
               <p className="mt-2 text-xs leading-5 text-[#25255A]/65">
-                L’agent fait ressortir ce qui bloque, ce qui pèse encore sur toi, et ce qui pourrait devenir plus fluide.
+                L’agent avance étape par étape, sans transformer l’expérience en formulaire.
               </p>
             </div>
-
             <div className="rounded-2xl border border-[#E5DDD0] bg-white/70 p-4 sm:p-5">
               <p className="font-semibold">Une synthèse personnalisée</p>
               <p className="mt-2 text-xs leading-5 text-[#25255A]/65">
-                À la fin, tu reçois une synthèse claire avec les frictions détectées et les opportunités possibles.
+                À la fin, tu reçois une synthèse claire et réutilisable.
               </p>
             </div>
           </div>
-
           <p className="mt-8 text-center font-serif text-lg italic text-[#B5966B] sm:mt-10 sm:text-xl">
             Une discussion, pas un formulaire.
           </p>
