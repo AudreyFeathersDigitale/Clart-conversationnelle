@@ -7,12 +7,15 @@ export const dynamic = "force-dynamic";
 const stages = [
   {
     id: "business",
-    goal: "Comprendre ce que fait la personne, pour qui, et le problème qu’elle aide à résoudre.",
+    goal:
+      "Comprendre ce que fait la personne, pour qui, et le problème qu’elle aide à résoudre.",
     inputType: "text",
   },
+
   {
     id: "acquisition",
-    goal: "Comprendre comment les bonnes personnes découvrent son activité.",
+    goal:
+      "Comprendre comment les bonnes personnes découvrent son activité.",
     inputType: "choice",
     choices: [
       "Instagram",
@@ -25,9 +28,11 @@ const stages = [
       "Autre",
     ],
   },
+
   {
     id: "engagement",
-    goal: "Comprendre comment elle garde le lien avec les personnes intéressées.",
+    goal:
+      "Comprendre comment elle garde le lien avec les personnes intéressées.",
     inputType: "choice",
     choices: [
       "Newsletter",
@@ -43,9 +48,11 @@ const stages = [
       "Autre",
     ],
   },
+
   {
     id: "human_load",
-    goal: "Identifier ce qui repose encore beaucoup sur elle dans le parcours prospect.",
+    goal:
+      "Identifier ce qui repose encore beaucoup sur elle dans le parcours prospect.",
     inputType: "choice",
     choices: [
       "Répondre aux questions",
@@ -59,14 +66,18 @@ const stages = [
       "Tout gérer au feeling",
     ],
   },
+
   {
     id: "three_month_view",
-    goal: "Faire émerger ce qui pourrait devenir difficile à tenir dans les prochains mois si rien ne change.",
+    goal:
+      "Faire émerger ce qui pourrait devenir difficile à tenir dans les prochains mois si rien ne change.",
     inputType: "text",
   },
+
   {
     id: "positive_projection",
-    goal: "Créer une projection positive si certaines choses devenaient plus fluides.",
+    goal:
+      "Créer une projection positive si certaines choses devenaient plus fluides.",
     inputType: "choice",
     choices: [
       "Gagner du temps",
@@ -79,9 +90,11 @@ const stages = [
       "Réduire ma charge mentale",
     ],
   },
+
   {
     id: "ai_doubts",
-    goal: "Comprendre les doutes ou réserves de la personne face à l’IA dans la relation client.",
+    goal:
+      "Comprendre les doutes ou réserves de la personne face à l’IA.",
     inputType: "choice",
     choices: [
       "Que ça fasse faux ou robotique",
@@ -93,9 +106,11 @@ const stages = [
       "Je n’ai pas vraiment de doute",
     ],
   },
+
   {
     id: "human_boundary",
-    goal: "Identifier ce qui doit absolument rester humain dans la relation.",
+    goal:
+      "Identifier ce qui doit absolument rester humain dans la relation.",
     inputType: "choice",
     choices: [
       "Les appels",
@@ -113,50 +128,72 @@ const stages = [
 const systemPrompt = `
 Tu es Clarté, une IA conversationnelle premium.
 
-Tu aides une personne à prendre du recul sur son acquisition, son parcours prospect et la place possible d’une IA supervisée.
+Tu aides une personne à prendre du recul sur son acquisition, son activité et ce qui repose encore beaucoup sur elle.
 
-Tu ne dois PAS ressembler à :
-- un chatbot
-- un formulaire
-- un consultant LinkedIn
-- un outil marketing
-- un vendeur
+Tu ne dois PAS ressembler :
+- à un chatbot
+- à un formulaire
+- à un consultant LinkedIn
+- à une IA marketing
+- à un vendeur
 
-Tu dois ressembler à :
-- une personne calme
+Tu dois sembler :
+- humaine
 - attentive
 - naturelle
+- calme
+- subtile
 - intelligente sans en faire trop
-- capable de poser une question simple quand il manque du contexte
 
 Règles de style :
-- parle en français
+- parle simplement
 - tutoie
 - réponds court
 - une à trois phrases maximum
 - évite le jargon
 - évite les phrases trop parfaites
-- évite "parcours prospect" sauf si vraiment nécessaire
-- évite "fluidification"
-- évite "opportunités"
-- évite "la vraie question devient"
-- observe avant d’analyser
-- ne fais pas de mini diagnostic à chaque message
+- évite les analyses longues
+- observe avant d’interpréter
+- pas de ton startup
+- pas de ton consultant
 
-Règle très importante :
-Si la réponse est trop vague pour atteindre l’objectif de l’étape, tu dois rester sur la même étape et poser une question de précision.
+IMPORTANT :
+
+Quand tu passes à l’étape suivante :
+- ne réponds JAMAIS seulement "Oui… je vois."
+- fais une transition conversationnelle naturelle
+- reformule légèrement ce que la personne vient de dire
+- puis pose directement la question suivante dans le même message
 
 Exemple :
-Si l’objectif est de comprendre l’activité et que la personne répond :
-"je suis coach"
-Tu dois demander :
+
+Utilisateur :
+"Je suis coach pour les personnes obèses"
+
+BON :
+"Ok, je vois mieux 🙂 Tu accompagnes donc des personnes sur un sujet très personnel, où la confiance doit beaucoup compter. Aujourd’hui, ces personnes te découvrent surtout comment ?"
+
+MAUVAIS :
+"Oui… je vois."
+
+IMPORTANT :
+
+Si la réponse est trop vague pour comprendre correctement :
+- reste sur la même étape
+- pose une question de précision simple
+
+Exemple :
+"Je suis coach"
+
+Réponse :
 "Ok 🙂 Tu accompagnes plutôt qui, et sur quel type de sujet ?"
 
-Ne passe à l’étape suivante que quand l’objectif de l’étape est suffisamment compris.
+Ne passe à l’étape suivante que quand le contexte est suffisamment compris.
 
-Tu dois répondre uniquement en JSON valide, sans markdown.
+Tu dois répondre uniquement en JSON valide.
 
 Format obligatoire :
+
 {
   "message": "message envoyé à l’utilisateur",
   "stageId": "id de l’étape actuelle ou suivante",
@@ -179,89 +216,18 @@ function getStage(stageId: string) {
 }
 
 function getNextStageId(stageId: string) {
-  const currentIndex = stages.findIndex((stage) => stage.id === stageId);
+  const currentIndex = stages.findIndex(
+    (stage) => stage.id === stageId
+  );
 
-  if (currentIndex === -1 || currentIndex >= stages.length - 1) {
+  if (
+    currentIndex === -1 ||
+    currentIndex >= stages.length - 1
+  ) {
     return "summary";
   }
 
   return stages[currentIndex + 1].id;
-}
-
-function getInitialQuestion() {
-  return {
-    message: "Tu fais quoi exactement aujourd’hui, et pour qui ?",
-    stageId: "business",
-    stageComplete: false,
-    inputType: "text",
-    choices: [],
-  };
-}
-
-function buildFallbackResponse(stageId: string) {
-  const stage = getStage(stageId);
-
-  if (stage.id === "business") {
-    return {
-      message: "Tu accompagnes plutôt qui, et sur quel type de sujet ?",
-      stageId: "business",
-      stageComplete: false,
-      inputType: "text",
-      choices: [],
-    };
-  }
-
-  if (stage.id === "summary") {
-    return {
-      message:
-        "Merci. Je peux maintenant te préparer une synthèse claire de ce qui ressort.",
-      stageId: "summary",
-      stageComplete: true,
-      inputType: "leadCapture",
-      choices: [],
-    };
-  }
-
-  return {
-    message: "Oui… je vois. On continue doucement.",
-    stageId,
-    stageComplete: false,
-    inputType: stage.inputType,
-    choices: stage.choices || [],
-  };
-}
-
-function normalizeAssistantPayload(payload: any, fallbackStageId: string) {
-  const stageId =
-    typeof payload?.stageId === "string" ? payload.stageId : fallbackStageId;
-
-  const stage =
-    stageId === "summary"
-      ? null
-      : stages.find((item) => item.id === stageId);
-
-  const inputType =
-    payload?.inputType === "choice" ||
-    payload?.inputType === "text" ||
-    payload?.inputType === "leadCapture"
-      ? payload.inputType
-      : stage?.inputType || "text";
-
-  return {
-    message:
-      typeof payload?.message === "string" && payload.message.trim()
-        ? payload.message.trim()
-        : "Oui… je vois.",
-    stageId,
-    stageComplete: Boolean(payload?.stageComplete),
-    inputType,
-    choices:
-      inputType === "choice"
-        ? Array.isArray(payload?.choices) && payload.choices.length > 0
-          ? payload.choices
-          : stage?.choices || []
-        : [],
-  };
 }
 
 export async function POST(req: Request) {
@@ -277,98 +243,121 @@ export async function POST(req: Request) {
     } = body;
 
     if (mode === "start") {
-      return NextResponse.json(getInitialQuestion());
+      return NextResponse.json({
+        message:
+          "Tu fais quoi exactement aujourd’hui, et pour qui ?",
+        stageId: "business",
+        stageComplete: false,
+        inputType: "text",
+        choices: [],
+      });
     }
 
     const currentStage = getStage(currentStageId);
     const nextStageId = getNextStageId(currentStageId);
-    const nextStage = nextStageId === "summary" ? null : getStage(nextStageId);
+    const nextStage =
+      nextStageId === "summary"
+        ? null
+        : getStage(nextStageId);
 
     const apiKey = process.env.OPENAI_API_KEY;
 
     if (!apiKey) {
-      return NextResponse.json(buildFallbackResponse(currentStageId));
-    }
-
-    const openai = new OpenAI({ apiKey });
-
-    const userPayload = {
-      currentStage,
-      nextStage,
-      currentStageId,
-      nextStageId,
-      userAnswer,
-      answers,
-      recentMessages: Array.isArray(messages) ? messages.slice(-8) : [],
-      instruction:
-        "Décide si l’étape actuelle est suffisamment comprise. Si oui, envoie une transition courte puis la question de l’étape suivante. Si non, reste sur l’étape actuelle et pose une question de précision.",
-    };
-
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-      temperature: 0.75,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: JSON.stringify(userPayload),
-        },
-      ],
-    });
-
-    const content = completion.choices[0]?.message?.content ?? "";
-    const parsed = safeJsonParse(content);
-
-    if (!parsed) {
-      return NextResponse.json(buildFallbackResponse(currentStageId));
-    }
-
-    const normalized = normalizeAssistantPayload(parsed, currentStageId);
-
-    if (normalized.stageComplete) {
-      const nextId = getNextStageId(currentStageId);
-
-      if (nextId === "summary") {
-        return NextResponse.json({
-          message:
-            normalized.message ||
-            "Merci. Je peux maintenant te préparer ta synthèse personnalisée.",
-          stageId: "summary",
-          stageComplete: true,
-          inputType: "leadCapture",
-          choices: [],
-        });
-      }
-
-      const next = getStage(nextId);
-
       return NextResponse.json({
-        message: normalized.message,
-        stageId: next.id,
+        message: "Oui… je vois 🙂",
+        stageId: currentStageId,
         stageComplete: false,
-        inputType: next.inputType,
-        choices: next.choices || [],
+        inputType: currentStage.inputType,
+        choices: currentStage.choices || [],
       });
     }
 
-    const stage = getStage(normalized.stageId);
+    const openai = new OpenAI({
+      apiKey,
+    });
+
+    const completion =
+      await openai.chat.completions.create({
+        model:
+          process.env.OPENAI_MODEL || "gpt-4o-mini",
+
+        temperature: 0.8,
+
+        response_format: {
+          type: "json_object",
+        },
+
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+
+          {
+            role: "user",
+            content: JSON.stringify({
+              currentStage,
+              nextStage,
+              currentStageId,
+              nextStageId,
+              userAnswer,
+              answers,
+              recentMessages: Array.isArray(messages)
+                ? messages.slice(-8)
+                : [],
+
+              instruction:
+                "Décide si l’objectif de l’étape actuelle est suffisamment compris. Si oui, fais une transition naturelle puis pose la question suivante dans le même message. Sinon, reste sur l’étape actuelle et pose une question de précision.",
+            }),
+          },
+        ],
+      });
+
+    const content =
+      completion.choices[0]?.message?.content ?? "";
+
+    const parsed = safeJsonParse(content);
+
+    if (!parsed) {
+      return NextResponse.json({
+        message: "Oui… je vois 🙂",
+        stageId: currentStageId,
+        stageComplete: false,
+        inputType: currentStage.inputType,
+        choices: currentStage.choices || [],
+      });
+    }
 
     return NextResponse.json({
-      message: normalized.message,
-      stageId: stage.id,
-      stageComplete: false,
-      inputType: stage.inputType,
-      choices: stage.choices || [],
+      message:
+        typeof parsed.message === "string"
+          ? parsed.message
+          : "Oui… je vois 🙂",
+
+      stageId:
+        typeof parsed.stageId === "string"
+          ? parsed.stageId
+          : currentStageId,
+
+      stageComplete: Boolean(parsed.stageComplete),
+
+      inputType:
+        parsed.inputType ||
+        currentStage.inputType,
+
+      choices:
+        Array.isArray(parsed.choices)
+          ? parsed.choices
+          : currentStage.choices || [],
     });
   } catch (error) {
-    console.error("Erreur Clarté conversation :", error);
+    console.error(
+      "Erreur Clarté conversation :",
+      error
+    );
 
     return NextResponse.json({
-      message: "Oui… je vois. On continue doucement.",
+      message: "Oui… je vois 🙂",
       stageId: "business",
       stageComplete: false,
       inputType: "text",
